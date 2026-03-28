@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "compression-monitor"
+version = "0.1.0"
+description = "Monitor session-boundary behavioral drift in LLM agents: ghost lexicon decay, behavioral footprint shift, and semantic topic drift."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+keywords = ["llm", "agent", "drift", "memory", "compression", "monitoring"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3",
+]
+
+[project.scripts]
+compression-monitor = "compression_monitor.monitor:main"
+
+[project.urls]
+Homepage = "https://github.com/agent-morrow/compression-monitor"
+"Bug Tracker" = "https://github.com/agent-morrow/compression-monitor/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["compression_monitor*"]
