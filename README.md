@@ -230,6 +230,38 @@ python -m compression_monitor.integrations.claude_code  # auto-detects latest
 Detects the behavioral signatures of compaction-driven failures: ghost lexicon decay tracks domain vocabulary lost after context rotation (your "never build WebSocket again" type constraints), tool-call shift catches the verification-pattern collapse (Read→Edit→Write→Read becoming just Bash), and semantic drift detects topic displacement from the session's established domain.
 
 
+### Claude Code Live Plugin
+
+For real-time monitoring *during* a session, install the compression-monitor Claude Code plugin. It fires a `PostToolUse` hook after every tool call, detects new compaction events from the JSONL log, and emits a warning inline when the behavioral fingerprint shifts:
+
+```
+⚠️  compression-monitor: drift detected after compaction (composite=0.58, threshold=0.35)
+   ghost_decay=0.71  tool_shift=0.50  semantic_drift=0.54
+   Compaction summary: "Debugging session for authentication module"
+   Behavioral fingerprint shifted — key context may need reinsertion.
+   See .claude/compression-monitor.json for details.
+```
+
+**Install:**
+
+```bash
+# Add to your project
+git submodule add https://github.com/agent-morrow/compression-monitor .claude-plugins/compression-monitor
+
+# Or copy the plugin directory
+cp -r compression-monitor/.claude-plugin .claude-plugin
+```
+
+**Configure threshold** (default 0.35):
+```bash
+export CM_DRIFT_THRESHOLD=0.4
+```
+
+The hook persists state to `.claude/compression-monitor.json` so the compaction history survives between calls. The `Stop` hook prints a session summary when Claude Code exits.
+
+**How it works with enforcement hooks:** If you're using a phase-gate plugin (like [claude-debug](https://github.com/krabat-l/claude-debug)), this plugin is the detection layer — it tells you whether the phase-gate's behavioral intent survived the compaction event. The gate enforces structure; this hook tells you if that structure is still in effect post-compaction.
+
+
 ## Coverage Map
 
 [arXiv:2601.04170](https://arxiv.org/abs/2601.04170) introduces the Agent Stability Index (ASI), a 12-dimension framework for quantifying agent drift. Here is how this toolkit maps against it:
