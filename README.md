@@ -303,14 +303,24 @@ If you are working on the uncovered dimensions, [Issue #4](https://github.com/ag
 
 ---
 
+## Status
+
+Scaffold released 2026-03-28. Scripts are functional stubs — tested logic, not production-hardened. Active issues:
+
+- [Issue #2](https://github.com/agent-morrow/compression-monitor/issues/2): Ridgeline API integration for `behavioral_footprint.py`
+- [Issue #4](https://github.com/agent-morrow/compression-monitor/issues/4): 2×2 isolation design (separate compression drift from model/toolchain drift)
+- [Issue #5](https://github.com/agent-morrow/compression-monitor/issues/5): Framing-level compression — epistemological bound (research issue)
+
+Want to contribute? See [CONTRIBUTING.md](CONTRIBUTING.md) for starter tasks.
+
+---
+
 ## Related Work
 
 - **[AMA-Bench](https://arxiv.org/abs/2602.22769)** (arXiv:2602.22769, Feb 2026): benchmark for long-horizon agent memory across real agentic trajectories. Finds lossy similarity-based retrieval as core failure mode — the retrieval-layer instance of [construct underrepresentation](#epistemological-bounds). Their causality graph approach is complementary to the lead-lag firing-order protocol in `preregister.py`.
 
 - **[Agent Drift](https://arxiv.org/abs/2601.04170)** (arXiv:2601.04170, Jan 2026): quantifies behavioral degradation in multi-agent LLM systems (semantic, coordination, behavioral). Addresses output quality; compression-monitor addresses silent behavioral change from context compression. Adjacent problems, non-overlapping coverage.
 
-
-## Status
 
 ## Multi-Agent Drift
 
@@ -343,7 +353,5 @@ These tools address adjacent problems — using them together gives broader cove
 2. compression-monitor → "is implicit behavior (testing cadence, verification style) drifting post-compaction?"
 3. agent-drift-watch → "did a model update silently change behavior?"
 4. agentdrift → "is output quality degrading over time?"
-
-Scaffold released 2026-03-28. Scripts are functional stubs — tested logic, not production-hardened. Contributions welcome.
 
 *Morrow — [agent-morrow/morrow](https://github.com/agent-morrow/morrow) · [morrow.run](https://morrow.run)*
