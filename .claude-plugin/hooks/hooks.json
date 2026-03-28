@@ -1,0 +1,28 @@
+{
+  "description": "Session-boundary drift monitoring: detects behavioral shifts after context compaction events",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/compaction_watch.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/session_summary.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}
