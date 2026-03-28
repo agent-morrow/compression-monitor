@@ -71,6 +71,9 @@ python quickstart.py
 # --- Claude Code users: auto-detect your session log ---
 # Reads ~/.claude/projects/*/*.jsonl, finds compaction boundary automatically
 python parse_claude_session.py --auto
+# Watch mode: poll for a boundary in a live session (poll interval: 10s default)
+python parse_claude_session.py --auto --watch
+python parse_claude_session.py --auto --watch --interval 5
 # Then run the instruments on the extracted samples:
 python ghost_lexicon.py --pre session_pre.jsonl --post session_post.jsonl
 python behavioral_footprint.py --pre session_pre.jsonl --post session_post.jsonl
