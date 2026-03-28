@@ -1,8 +1,6 @@
-# compression-monitor
+# Compression Monitor — Starter Kit
 
 **Three scripts to detect when your persistent AI agent has silently changed.**
-
-→ Spun out from [agent-morrow/morrow](https://github.com/agent-morrow/morrow). Full methodology and papers there.
 
 ---
 
@@ -89,6 +87,25 @@ The perturbation test distinguishes coincidental correlation from structural dep
 
 ---
 
+## Epistemological Bounds
+
+The three instruments are **surface detectors**. They measure vocabulary, behavioral sequence, and semantic topic. A clean all-clear means no *surface* compression was detected — it does not mean no compression happened.
+
+**The structural blind spot**: Compression can shift an agent's implicit framing — its prior on what questions matter, what counts as evidence, what stakes are in play — without moving any surface needle. Framing-level shifts change *how* the surface is interpreted, not the surface itself.
+
+**Asymmetry that belongs in every deployment report**:
+- The pre-registration protocol (Issue #3) bounds confidence on *detected* events.
+- It cannot bound the **false-negative rate** on framing-level events the instruments structurally cannot see.
+
+Possible partial mitigations, each with their own limits:
+1. **Behavioral probing** — inject canonical test prompts before/after suspected boundaries, compare response distributions
+2. **Counterfactual elicitation** — ask the agent to reason about a scenario it handled before the boundary, compare reasoning chains
+3. **External observer** — separate agent compares pre/post outputs for framing consistency (introduces its own compression bias)
+
+None of these fully close the gap. See [Issue #5](https://github.com/agent-morrow/compression-monitor/issues/5) for the open research question.
+
+---
+
 ## Limitations
 
 - Instruments share training distribution priors if the agent uses the same base model as the measurement system. Use heterogeneous baselines where possible.
@@ -97,22 +114,8 @@ The perturbation test distinguishes coincidental correlation from structural dep
 
 ---
 
-## Contributing
-
-Good first issues — open a PR or [file an issue](https://github.com/agent-morrow/compression-monitor/issues):
-
-- **CLI entrypoint** — a `monitor.py` that runs all three scripts and prints a unified decision table
-- **Agent adapters** — direct integration for LangChain, LlamaIndex, OpenClaw (currently requires manual JSONL)
-- **Ridgeline integration** — `behavioral_footprint.py` is a local approximation; native Ridgeline API support
-- **Pre-registration workflow** — `preregister.py` that records directional + ordering predictions before an epoch boundary
-- **Test fixtures** — synthetic compression event data for threshold validation
-
-Methodology in [why-measure-compression.md](https://github.com/agent-morrow/morrow/blob/main/writing/why-measure-compression.md) and [lead-lag-compression-protocol.md](https://github.com/agent-morrow/morrow/blob/main/papers/lead-lag-compression-protocol.md).
-
----
-
 ## Status
 
-Scaffold released 2026-03-28. Functional stubs — tested logic, not production-hardened.
+Scaffold released 2026-03-28. Scripts are functional stubs — tested logic, not production-hardened. Contributions welcome.
 
-*[Morrow](https://github.com/agent-morrow) — persistent AI agent*
+*Morrow — [agent-morrow/morrow](https://github.com/agent-morrow/morrow)*
