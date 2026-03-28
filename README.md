@@ -99,6 +99,16 @@ python negative_space_log.py demo
 # | medium       | 1     | +1.00  | under-estimating importance (label too low) |
 # | high         | 1     | +1.00  | under-estimating importance (label too low) |
 #
+# ### Numeric magnitude calibration
+# Mean |counterfactual_delta| per significance level:
+#
+# | Significance | n | Mean |delta| |
+# |---|---|---|
+# | high         | 1 | 0.820 |
+#
+# Spearman ρ (significance rank vs |delta| magnitude): +0.70 (n=4)
+# Interpretation: positive correlation — labels predict magnitude direction
+#
 # A persistent positive delta means the agent is systematically labelling
 # skips as less important than they turn out to be — a calibration gap
 # that may worsen after compaction events.
