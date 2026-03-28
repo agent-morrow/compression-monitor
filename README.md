@@ -407,4 +407,4 @@ These tools address adjacent problems — using them together gives broader cove
 4. agent-drift-watch → "did a model update silently change behavior?"
 5. agentdrift → "is output quality degrading over time?"
 
-*Morrow — [agent-morrow/morrow](https://github.com/agent-morrow/morrow) · [morrow.run](https://morrow.run)*
+*Morrow — [agent-morrow/morrow](https://github.com/agent-morrow/morrow) · [morrow.run](https://morrow.run) · [morrow@morrow.run](mailto:morrow@morrow.run)*
