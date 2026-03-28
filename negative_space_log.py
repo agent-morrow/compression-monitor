@@ -236,6 +236,75 @@ class NegativeSpaceLog:
                 f"| {level} | {len(deltas)} | {mean_delta:+.2f} | {interp} |"
             )
 
+        # --- Numeric delta analysis (when counterfactual_delta is a float) ---
+        numeric_pairs: list[tuple[int, float]] = []
+        for res in resolutions:
+            skip_id = res.get("resolves_skip_id")
+            skip = skips.get(skip_id)
+            if not skip:
+                continue
+            delta = res.get("counterfactual_delta")
+            if isinstance(delta, (int, float)) and delta is not None:
+                sig_rank = significance_map.get(skip.get("significance", "medium"), 1)
+                numeric_pairs.append((sig_rank, abs(float(delta))))
+
+        if numeric_pairs:
+            lines.append("")
+            lines.append("### Numeric magnitude calibration")
+            lines.append(
+                "Mean |counterfactual_delta| per significance level "
+                "(higher significance should predict higher magnitude):"
+            )
+            lines.append("")
+            lines.append("| Significance | n | Mean |delta| |")
+            lines.append("|---|---|---|")
+            for level in ("low", "medium", "high", "critical"):
+                sig_rank = significance_map[level]
+                lvl_deltas = [d for s, d in numeric_pairs if s == sig_rank]
+                if lvl_deltas:
+                    lines.append(
+                        f"| {level} | {len(lvl_deltas)} | {sum(lvl_deltas)/len(lvl_deltas):.3f} |"
+                    )
+            # Spearman rank correlation (no external deps)
+            if len(numeric_pairs) >= 4:
+                def _spearman(pairs):
+                    n = len(pairs)
+                    xs = [p[0] for p in pairs]
+                    ys = [p[1] for p in pairs]
+                    def _ranks(v):
+                        sv = sorted(enumerate(v), key=lambda x: x[1])
+                        r = [0.0] * len(v)
+                        for i, (orig_i, _) in enumerate(sv):
+                            r[orig_i] = i + 1
+                        return r
+                    rx = _ranks(xs)
+                    ry = _ranks(ys)
+                    d2 = sum((rx[i] - ry[i]) ** 2 for i in range(n))
+                    rho = 1 - 6 * d2 / (n * (n**2 - 1))
+                    return rho
+                rho = _spearman(numeric_pairs)
+                lines.append("")
+                lines.append(
+                    f"Spearman ρ (significance rank vs |delta| magnitude): **{rho:+.3f}** "
+                    f"(n={len(numeric_pairs)})"
+                )
+                interp = (
+                    "positive correlation — labels predict magnitude direction"
+                    if rho > 0.3
+                    else (
+                        "negative or near-zero — labels do not predict magnitude; annotation drift likely"
+                        if rho < -0.1
+                        else "weak correlation — insufficient data or noisy labels"
+                    )
+                )
+                lines.append(f"Interpretation: {interp}")
+        else:
+            lines.append("")
+            lines.append(
+                "_No numeric counterfactual_delta values recorded yet. "
+                "Populate `counterfactual_delta` in skip_resolution records to enable magnitude calibration._"
+            )
+
         lines.extend([
             "",
             "A persistent positive delta means the agent is systematically labelling "
@@ -295,8 +364,8 @@ if __name__ == "__main__":
         cycle_id="heartbeat-20260328T2120Z",
         resolves_skip_id=skip_c,
         outcome="counterfactual_confirmed",
-        counterfactual_delta=None,
-        notes="operator noticed the missing entry independently",
+        counterfactual_delta=0.82,
+        notes="operator noticed the missing entry independently; rated 0.82 impact",
     )
 
     records = log.load()
