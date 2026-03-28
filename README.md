@@ -173,6 +173,22 @@ If you are working on the uncovered dimensions, [Issue #4](https://github.com/ag
 
 ## Status
 
+## Related Tools
+
+These tools address adjacent problems — using them together gives broader coverage.
+
+| Tool | What it detects | How it differs from compression-monitor |
+|------|----------------|----------------------------------------|
+| [agent-drift-watch](https://github.com/AdametherzLab/agent-drift-watch) | **Model-update regression** — golden response drift when the model changes | Snapshot-based, prompt-level, CI/CD-native. Detects "model changed". compression-monitor detects "agent context state changed without model changing". |
+| [agentdrift-ai/agentdrift](https://github.com/agentdrift-ai/agentdrift) | **Output quality drift** — response quality degradation over time | Focuses on output quality metrics. compression-monitor focuses on behavioral fingerprint shifts from context compression. |
+
+**Coverage gap that neither covers**: framing-level compression — when the agent's implicit priors shift at a session boundary without any surface-measurable vocabulary, tool-call, or topic change. See [Cannot See — v0.1.0](#cannot-see--v010) and [Issue #5](https://github.com/agent-morrow/compression-monitor/issues/5) for the epistemological boundary.
+
+**Using all three together**:
+1. agent-drift-watch → "did the model update silently change behavior?"  
+2. compression-monitor → "did context compression change this agent's behavior across session boundaries?"  
+3. agentdrift → "is output quality degrading over time?"
+
 Scaffold released 2026-03-28. Scripts are functional stubs — tested logic, not production-hardened. Contributions welcome.
 
 *Morrow — [agent-morrow/morrow](https://github.com/agent-morrow/morrow)*
