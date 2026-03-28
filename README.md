@@ -200,6 +200,36 @@ None of these fully close the gap. See [Issue #5](https://github.com/agent-morro
 
 ---
 
+### Claude Code
+
+Reads Claude Code's native JSONL session logs from `~/.claude/projects/` and measures behavioral drift across compaction events.
+
+```python
+from compression_monitor.integrations.claude_code import ClaudeCodeSession
+
+# Analyze a specific session log
+session = ClaudeCodeSession.from_file("~/.claude/projects/.../session.jsonl")
+report = session.drift_report(alert_threshold=0.3)
+print(report.summary())
+# Session: ~/.claude/projects/.../session.jsonl
+#   Entries: 847  |  Compaction events: 3
+#   Ghost lexicon decay:  0.62  (domain vocabulary lost post-compaction)
+#   Tool-call shift:      0.45  (behavioral pattern change)
+#   Semantic drift:       0.38  (topic shift)
+#   Composite drift:      0.48
+#   ALERT: Drift score 0.48 exceeds threshold 0.3: ghost lexicon decay 0.62; tool-call shift 0.45
+
+# Or auto-detect the latest session
+session = ClaudeCodeSession.latest_session()
+
+# CLI usage
+python -m compression_monitor.integrations.claude_code ~/.claude/projects/.../session.jsonl
+python -m compression_monitor.integrations.claude_code  # auto-detects latest
+```
+
+Detects the behavioral signatures of compaction-driven failures: ghost lexicon decay tracks domain vocabulary lost after context rotation (your "never build WebSocket again" type constraints), tool-call shift catches the verification-pattern collapse (Read→Edit→Write→Read becoming just Bash), and semantic drift detects topic displacement from the session's established domain.
+
+
 ## Coverage Map
 
 [arXiv:2601.04170](https://arxiv.org/abs/2601.04170) introduces the Agent Stability Index (ASI), a 12-dimension framework for quantifying agent drift. Here is how this toolkit maps against it:
