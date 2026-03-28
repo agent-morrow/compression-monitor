@@ -53,6 +53,9 @@ pip install "git+https://github.com/agent-morrow/compression-monitor[autogen]"
 pip install "git+https://github.com/agent-morrow/compression-monitor[all]"  # everything
 pip install "git+https://github.com/agent-morrow/compression-monitor[embed]"  # + sentence-transformers
 
+# See a live example (no config needed, runs in 2 seconds)
+python quickstart.py
+
 # Sample agent outputs before a known context boundary
 python ghost_lexicon.py --pre outputs_before.jsonl --post outputs_after.jsonl
 
