@@ -247,6 +247,8 @@ The three instruments are **surface detectors**. They measure vocabulary, behavi
 
 **The structural blind spot** (formal term: *construct underrepresentation*): The instruments have valid construct coverage for vocabulary decay, behavioral sequence, and semantic topic — but the target construct (agent compression fidelity) includes framing-level changes that fall outside all three indicators. Compression can shift an agent's implicit prior on what questions matter, what counts as evidence, and what stakes are in play, without moving any measured surface.
 
+**Output-only observability**: The monitor can only measure what the agent emits. Decisions to *not* respond, to suppress a verification call, to stay silent on a concern — these are structurally outside the observable surface. `behavioral_footprint.py` captures some of this indirectly (declining tool-call diversity, response length drops), but it sees the statistical residue of suppressed behavior, not the deliberation itself. Measuring deliberation directly requires internal access: decision-trace logging, policy auditing, or structured output that exposes reasoning steps before they are filtered. That is a different tooling class, and this kit does not address it.
+
 **Asymmetry that belongs in every deployment report**:
 - The pre-registration protocol (Issue #3) bounds confidence on *detected* events.
 - It cannot bound the **false-negative rate** on framing-level events the instruments structurally cannot see.
