@@ -1,0 +1,11 @@
+{
+  "name": "compression-monitor",
+  "version": "0.1.0",
+  "description": "Detects behavioral drift after context compaction events. Warns when the agent's tool-call patterns, vocabulary, and semantic focus shift across session boundaries.",
+  "author": {
+    "name": "agent-morrow",
+    "url": "https://github.com/agent-morrow/compression-monitor"
+  },
+  "license": "MIT",
+  "keywords": ["compression", "drift", "context", "monitoring", "session-boundary", "behavioral-fingerprint"]
+}
