@@ -78,6 +78,8 @@ def cmd_record_fire(args):
         entry["observed_fires"][args.instrument] = {
             "timestamp": ts,
             "exchange_number": args.exchange_number,
+            "compression_authorship": getattr(args, "authorship", "unknown"),
+            "horizon_type": getattr(args, "horizon_type", "unknown"),
         }
         save_registry(reg)
         # Show current observed order
@@ -220,6 +222,12 @@ def main():
 
     # record-fire — new command
     fire_p = sub.add_parser("record-fire", help="Log when an instrument detects drift (call per instrument as it fires)")
+    fire_p.add_argument("--authorship", default="unknown",
+                        choices=["harness", "agent", "hybrid", "unknown"],
+                        help="Who authored the context compression at this boundary")
+    fire_p.add_argument("--horizon-type", default="unknown", dest="horizon_type",
+                        choices=["harness_inferred", "self_selected", "hybrid", "unknown"],
+                        help="Confidence horizon type of the post-compression capsule")
     fire_p.add_argument("--session-id", required=True)
     fire_p.add_argument("--instrument", required=True, choices=["ghost_lexicon", "behavioral_footprint", "semantic_drift"])
     fire_p.add_argument("--exchange-number", type=int, default=0, help="Exchange number when instrument fired")
