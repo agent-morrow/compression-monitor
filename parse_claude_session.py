@@ -20,6 +20,10 @@ Usage:
     # Custom output prefix:
     python parse_claude_session.py --auto --out /tmp/myproject
 
+    # Watch mode: poll for a compaction boundary and emit samples when it fires
+    python parse_claude_session.py --auto --watch
+    python parse_claude_session.py --auto --watch --interval 5
+
 Claude Code session JSONL schema:
     Each line is a JSON object. Compaction events appear as:
         {"type": "summary", ...}  or  {"role": "system", "content": [{"type": "text", "text": "<summary>..."}]}
@@ -31,10 +35,12 @@ import argparse
 import json
 import os
 import sys
+import time
 from pathlib import Path
 
 
 CLAUDE_PROJECTS_DIR = Path.home() / ".claude" / "projects"
+DEFAULT_WATCH_INTERVAL = 10  # seconds
 
 
 def find_latest_session() -> Path | None:
@@ -87,6 +93,7 @@ def parse_session(session_path: Path) -> tuple[list[dict], list[dict]]:
     Parse session file and return (pre_samples, post_samples).
     Each sample is {"text": "...", "role": "assistant"}.
     If no compaction boundary is found, returns (all_turns, []).
+    Defensive: skips malformed/partial JSON lines (e.g. mid-flush writes).
     """
     pre, post = [], []
     found_boundary = False
@@ -99,6 +106,7 @@ def parse_session(session_path: Path) -> tuple[list[dict], list[dict]]:
             try:
                 record = json.loads(line)
             except json.JSONDecodeError:
+                # Skip partial lines — can occur when reading a file mid-write
                 continue
 
             if not found_boundary and is_compaction_boundary(record):
@@ -124,6 +132,61 @@ def write_samples(samples: list[dict], path: Path) -> None:
             f.write(json.dumps(s) + "\n")
 
 
+def watch_loop(session_path: Path, out_prefix: str, interval: int) -> None:
+    """
+    Poll session_path every `interval` seconds. When a compaction boundary is
+    detected (or new content appears after an already-detected boundary), rewrite
+    the pre/post output files and print a notification.
+
+    Exits after the first boundary is detected and post-compaction turns are written,
+    unless the boundary was already present on first scan (in which case it waits for
+    post-compaction content to accumulate).
+    """
+    out_pre = Path(f"{out_prefix}_pre.jsonl")
+    out_post = Path(f"{out_prefix}_post.jsonl")
+
+    last_size = 0
+    boundary_seen = False
+    last_post_count = -1
+
+    print(f"Watching: {session_path}  (poll every {interval}s)", flush=True)
+    print("Waiting for compaction boundary...", flush=True)
+
+    while True:
+        try:
+            current_size = session_path.stat().st_size
+        except FileNotFoundError:
+            print(f"Session file disappeared: {session_path}", file=sys.stderr)
+            sys.exit(1)
+
+        if current_size != last_size:
+            last_size = current_size
+            pre, post = parse_session(session_path)
+
+            if not boundary_seen and post:
+                # Boundary just appeared
+                boundary_seen = True
+                write_samples(pre, out_pre)
+                write_samples(post, out_post)
+                ts = time.strftime("%H:%M:%S")
+                print(f"\n[{ts}] Compaction boundary detected!", flush=True)
+                print(f"  Pre-compaction turns:  {len(pre):>4}  → {out_pre}", flush=True)
+                print(f"  Post-compaction turns: {len(post):>4}  → {out_post}", flush=True)
+                last_post_count = len(post)
+            elif boundary_seen and len(post) != last_post_count:
+                # New post-compaction turns arriving — update output files
+                write_samples(pre, out_pre)
+                write_samples(post, out_post)
+                ts = time.strftime("%H:%M:%S")
+                print(f"[{ts}] Updated: {len(post)} post-compaction turns → {out_post}", flush=True)
+                last_post_count = len(post)
+            elif not boundary_seen:
+                ts = time.strftime("%H:%M:%S")
+                print(f"[{ts}] {len(pre)} pre-compaction turns, no boundary yet", flush=True)
+
+        time.sleep(interval)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Extract pre/post compaction samples from a Claude Code session log."
@@ -136,6 +199,18 @@ def main() -> None:
     parser.add_argument(
         "--out", type=str, default="./session",
         help="Output file prefix (default: ./session). Writes <prefix>_pre.jsonl and <prefix>_post.jsonl."
+    )
+    parser.add_argument(
+        "--watch", action="store_true",
+        help=(
+            "Poll the session file for new compaction events and update output files "
+            "as they arrive. Useful for live monitoring during an active session. "
+            "Handles partial JSON lines defensively."
+        )
+    )
+    parser.add_argument(
+        "--interval", type=int, default=DEFAULT_WATCH_INTERVAL,
+        help=f"Poll interval in seconds for --watch mode (default: {DEFAULT_WATCH_INTERVAL})."
     )
     args = parser.parse_args()
 
@@ -154,6 +229,10 @@ def main() -> None:
         if not session_path.exists():
             print(f"Session file not found: {session_path}", file=sys.stderr)
             sys.exit(1)
+
+    if args.watch:
+        watch_loop(session_path, args.out, args.interval)
+        return
 
     pre, post = parse_session(session_path)
 
