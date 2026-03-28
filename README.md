@@ -89,7 +89,7 @@ The perturbation test distinguishes coincidental correlation from structural dep
 
 ## Epistemological Bounds
 
-The three instruments are **surface detectors**. They measure vocabulary, behavioral sequence, and semantic topic. A clean all-clear means no *surface* compression was detected — it does not mean no compression happened.
+The three instruments are **surface detectors**. They measure vocabulary, behavioral sequence, and semantic topic. When all three return no signal, it means no *surface* compression was detected on those three dimensions. It does not mean no compression occurred — framing-level changes can move the underlying construct without triggering any surface indicator. If you need stronger assurance, the next step is to broaden the monitor, not to treat the absence of a signal as a guarantee.
 
 **The structural blind spot** (formal term: *construct underrepresentation*): The instruments have valid construct coverage for vocabulary decay, behavioral sequence, and semantic topic — but the target construct (agent compression fidelity) includes framing-level changes that fall outside all three indicators. Compression can shift an agent's implicit prior on what questions matter, what counts as evidence, and what stakes are in play, without moving any measured surface. Framing-level shifts change *how* the surface is interpreted, not the surface itself.
 
