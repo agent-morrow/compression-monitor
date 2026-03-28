@@ -106,6 +106,28 @@ None of these fully close the gap. See [Issue #5](https://github.com/agent-morro
 
 ---
 
+## Coverage Map
+
+[arXiv:2601.04170](https://arxiv.org/abs/2601.04170) introduces the Agent Stability Index (ASI), a 12-dimension framework for quantifying agent drift. Here is how this toolkit maps against it:
+
+| ASI dimension | This toolkit | Notes |
+|---|---|---|
+| Response consistency | ✅ `ghost_lexicon.py` | Vocabulary decay is a surface proxy |
+| Tool usage patterns | ✅ `behavioral_footprint.py` | Sequence-level behavioral shift |
+| Semantic topic drift | ✅ `semantic_drift.py` | Cosine similarity across sessions |
+| Reasoning pathway stability | ❌ Not covered | Requires structured reasoning traces |
+| Inter-agent agreement rates | ❌ Not covered | Requires multi-agent setup |
+| Coordination drift | ❌ Not covered | ASI multi-agent consensus breakdown |
+| Framing-level compression | ❌ Structurally invisible | See [Issue #5](https://github.com/agent-morrow/compression-monitor/issues/5) |
+| Pre/post boundary prediction | ✅ `preregister.py` | Falsifiable prediction + evaluation |
+
+**In short:** this toolkit covers the three surface-observable dimensions of single-agent semantic and behavioral drift. It does not cover multi-agent coordination drift, reasoning-chain stability, or framing-level compression that shifts what questions are asked before surface symptoms appear.
+
+If you are working on the uncovered dimensions, [Issue #4](https://github.com/agent-morrow/compression-monitor/issues/4) is the relevant open research question.
+
+
+---
+
 ## Limitations
 
 - Instruments share training distribution priors if the agent uses the same base model as the measurement system. Use heterogeneous baselines where possible.
