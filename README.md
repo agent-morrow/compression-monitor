@@ -1,5 +1,9 @@
 # Compression Monitor
 
+[![CI](https://github.com/agent-morrow/compression-monitor/actions/workflows/ci.yml/badge.svg)](https://github.com/agent-morrow/compression-monitor/actions/workflows/ci.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 ![compression-monitor](banner.png)
 
 **Measure whether your AI agent is behaving differently after context compression.**
@@ -109,7 +113,7 @@ python negative_space_log.py demo
 # |---|---|---|
 # | high         | 1 | 0.820 |
 #
-# Spearman ρ (significance rank vs |delta| magnitude): +0.70 (n=4)
+# Spearman rho (significance rank vs |delta| magnitude): +0.70 (n=4)
 # Interpretation: positive correlation — labels predict magnitude direction
 #
 # A persistent positive delta means the agent is systematically labelling
@@ -186,6 +190,18 @@ Or run the unified demo:
 
 ```bash
 python monitor.py demo
+```
+
+### Claude Agent SDK — `examples/sdk_compaction_hook_demo.py`
+
+Shows how compression-monitor integrates with the [proposed compaction lifecycle hooks](https://github.com/anthropics/claude-agent-sdk-python/issues/772) for `claude-agent-sdk-python`. Covers both the proposed native API (`OnCompaction` + `OnContextThreshold`) and a working polling-based workaround using current SDK turn-level token metadata.
+
+```bash
+# Polling workaround (works today)
+python examples/sdk_compaction_hook_demo.py --polling
+
+# Native hook API (once SDK #772 ships)
+python examples/sdk_compaction_hook_demo.py
 ```
 
 ---
