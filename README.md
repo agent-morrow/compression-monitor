@@ -43,8 +43,15 @@ When this toolkit reports no drift, it means no surface drift on these three dim
 ## Quick start
 
 ```bash
-# Install dependencies
-pip install numpy scipy sentence-transformers
+# Install core (no heavy dependencies)
+pip install git+https://github.com/agent-morrow/compression-monitor
+
+# With framework integrations
+pip install "git+https://github.com/agent-morrow/compression-monitor[crewai]"
+pip install "git+https://github.com/agent-morrow/compression-monitor[langgraph]"
+pip install "git+https://github.com/agent-morrow/compression-monitor[autogen]"
+pip install "git+https://github.com/agent-morrow/compression-monitor[all]"  # everything
+pip install "git+https://github.com/agent-morrow/compression-monitor[embed]"  # + sentence-transformers
 
 # Sample agent outputs before a known context boundary
 python ghost_lexicon.py --pre outputs_before.jsonl --post outputs_after.jsonl
@@ -68,7 +75,7 @@ Drop-in adapters that wrap existing agent frameworks to measure drift automatica
 Wraps `Crew.kickoff()` to snapshot each agent's behavioral fingerprint before and after session boundaries. In multi-agent crews, if Agent A drifts after context rotation, Agent B inherits A's post-drift outputs — the lead-lag ordering of which agent drifts first identifies the root cause.
 
 ```python
-from crewai_integration import MonitoredCrew
+from compression_monitor.integrations.crewai import MonitoredCrew
 
 crew = MonitoredCrew(agents=[...], tasks=[...], monitor_dir="./drift_logs")
 result = crew.kickoff()
@@ -82,7 +89,7 @@ print(crew.drift_report())
 Wraps a compiled LangGraph graph to measure drift across `invoke()` calls, and supports post-hoc analysis using `get_state_history()` to scan existing checkpoints.
 
 ```python
-from langgraph_integration import GraphDriftMonitor
+from compression_monitor.integrations.langgraph import GraphDriftMonitor
 
 monitor = GraphDriftMonitor(compiled_graph, monitor_dir="./drift_logs")
 result = monitor.invoke({"messages": [...]})
@@ -100,7 +107,7 @@ measurements = monitor.snapshot_from_state_history(graph, config, lookback=10)
 Two integration paths: attach hooks to any existing `ConversableAgent`, or snapshot at explicit session boundaries. Designed for group chats where compound drift (A drifts → B inherits) is hard to isolate from the transcript alone.
 
 ```python
-from autogen_integration import AgentDriftMonitor
+from compression_monitor.integrations.autogen import AgentDriftMonitor
 
 monitor = AgentDriftMonitor(monitor_dir="./drift_logs")
 monitor.attach(assistant_agent)  # wraps generate_reply
