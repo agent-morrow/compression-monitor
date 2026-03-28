@@ -1,221 +1,244 @@
 #!/usr/bin/env python3
 """
-preregister.py — Pre-commit predictions before epoch boundaries.
+preregister.py — Pre-commit predictions before compression events.
 
 Records directional predictions, expected firing order, and max-latency bounds
 per instrument before a compression event. Post-boundary, compare actuals against
-registered predictions. Divergence is itself a signal.
+predictions. Divergence is the signal, not a calibration failure.
 
-See: https://github.com/agent-morrow/compression-monitor/issues/3
+Cairn insight (2026-03-28): if instruments disagree on whether an event occurred,
+"compression event" may not be a unified phenomenon. The TEMPORAL ORDERING of
+instrument firing is the primary finding — which instrument detects change first
+tells you more about the event's architecture than whether they converge.
+
+Usage:
+  python3 preregister.py register --session-id SID [--firing-order ghost_lexicon behavioral_footprint semantic_drift]
+  python3 preregister.py record-fire --session-id SID --instrument ghost_lexicon
+  python3 preregister.py evaluate --session-id SID [--actuals ghost_lexicon=0.3 behavioral=0.1 semantic=0.15]
+  python3 preregister.py list
 """
 
-import json
-import sys
 import argparse
+import json
+import os
+import sys
 from datetime import datetime, timezone
-from pathlib import Path
 
-
-REGISTRY_FILE = Path("compression_preregister.json")
+REGISTRY_FILE = os.path.join(os.path.dirname(__file__), "preregister_state.json")
 
 
 def load_registry() -> dict:
-    if REGISTRY_FILE.exists():
-        return json.loads(REGISTRY_FILE.read_text())
-    return {"registrations": [], "evaluations": []}
+    if os.path.exists(REGISTRY_FILE):
+        with open(REGISTRY_FILE) as f:
+            return json.load(f)
+    return {}
 
 
 def save_registry(reg: dict):
-    REGISTRY_FILE.write_text(json.dumps(reg, indent=2))
+    with open(REGISTRY_FILE, "w") as f:
+        json.dump(reg, f, indent=2)
 
 
 def cmd_register(args):
-    """Pre-register predictions before a suspected compression boundary."""
     reg = load_registry()
-
+    if args.session_id in reg:
+        print(f"Session {args.session_id} already registered. Use a new session-id or delete manually.")
+        sys.exit(1)
     entry = {
-        "id": f"reg_{int(datetime.now(timezone.utc).timestamp())}",
+        "session_id": args.session_id,
         "registered_at": datetime.now(timezone.utc).isoformat(),
-        "label": args.label,
         "predictions": {
-            "ghost_lexicon": {
-                "fires": args.ghost_fires,
-                "threshold": args.ghost_threshold,
-                "max_latency_exchanges": args.ghost_latency,
-            },
-            "behavioral_footprint": {
-                "fires": args.behavioral_fires,
-                "threshold": args.behavioral_threshold,
-                "max_latency_exchanges": args.behavioral_latency,
-            },
-            "semantic_drift": {
-                "fires": args.semantic_fires,
-                "threshold": args.semantic_threshold,
-                "max_latency_exchanges": args.semantic_latency,
-            },
+            "ghost_lexicon": {"direction": args.ghost_direction, "max_latency_exchanges": args.ghost_latency},
+            "behavioral_footprint": {"direction": args.behavioral_direction, "max_latency_exchanges": args.behavioral_latency},
+            "semantic_drift": {"direction": args.semantic_direction, "max_latency_exchanges": args.semantic_latency},
         },
         "expected_firing_order": args.firing_order,
-        "notes": args.notes or "",
+        "observed_fires": {},  # instrument -> {"timestamp": ..., "exchange_number": ...}
+        "evaluated": False,
     }
-
-    reg["registrations"].append(entry)
+    reg[args.session_id] = entry
     save_registry(reg)
-    print(f"Registered: {entry['id']} — {args.label}")
-    print(f"Predictions: ghost_lexicon={'fires' if args.ghost_fires else 'silent'}, "
-          f"behavioral={'fires' if args.behavioral_fires else 'silent'}, "
-          f"semantic={'fires' if args.semantic_fires else 'silent'}")
+    print(f"Registered session: {args.session_id}")
     print(f"Expected firing order: {args.firing_order}")
+    print(f"Note: use 'record-fire' as each instrument detects drift; 'evaluate' to compare against predictions.")
+
+
+def cmd_record_fire(args):
+    """Log when an instrument actually fires — call this as each monitor detects a change."""
+    reg = load_registry()
+    if args.session_id not in reg:
+        print(f"Session {args.session_id} not found. Register first.")
+        sys.exit(1)
+    entry = reg[args.session_id]
+    ts = datetime.now(timezone.utc).isoformat()
+    if args.instrument in entry["observed_fires"]:
+        print(f"Instrument {args.instrument} already recorded for session {args.session_id}.")
+        print(f"Recorded at: {entry['observed_fires'][args.instrument]['timestamp']}")
+    else:
+        entry["observed_fires"][args.instrument] = {
+            "timestamp": ts,
+            "exchange_number": args.exchange_number,
+        }
+        save_registry(reg)
+        # Show current observed order
+        fires = sorted(entry["observed_fires"].items(), key=lambda x: x[1]["timestamp"])
+        observed_order = [f[0] for f in fires]
+        expected_order = entry["expected_firing_order"]
+        match = (observed_order == expected_order[:len(observed_order)])
+        print(f"Recorded: {args.instrument} fired at exchange {args.exchange_number} ({ts})")
+        print(f"Observed firing order so far: {observed_order}")
+        if len(observed_order) == len(expected_order):
+            status = "✓ order matches prediction" if observed_order == expected_order else f"⚠ order diverges — expected {expected_order}"
+            print(f"All instruments fired. {status}")
+        else:
+            remaining = [i for i in expected_order if i not in observed_order]
+            print(f"Waiting for: {remaining}")
 
 
 def cmd_evaluate(args):
-    """Record actuals after the boundary and compare against registered predictions."""
     reg = load_registry()
-
-    # Find the registration to evaluate
-    target = None
-    for r in reg["registrations"]:
-        if r["id"] == args.registration_id or r["label"] == args.registration_id:
-            target = r
-            break
-
-    if not target:
-        print(f"ERROR: No registration found for '{args.registration_id}'", file=sys.stderr)
-        print("Registered entries:")
-        for r in reg["registrations"]:
-            print(f"  {r['id']} — {r['label']} ({r['registered_at'][:19]})")
+    if args.session_id not in reg:
+        print(f"Session {args.session_id} not found.")
         sys.exit(1)
+    target = reg[args.session_id]
 
-    actuals = {
-        "ghost_lexicon": {"fired": args.ghost_fired, "latency": args.ghost_latency_actual},
-        "behavioral_footprint": {"fired": args.behavioral_fired, "latency": args.behavioral_latency_actual},
-        "semantic_drift": {"fired": args.semantic_fired, "latency": args.semantic_latency_actual},
-    }
+    # Parse actuals from --actuals key=value pairs
+    actuals = {}
+    if args.actuals:
+        for a in args.actuals:
+            k, v = a.split("=")
+            actuals[k.strip()] = float(v.strip())
 
-    actual_order = args.actual_firing_order
+    deviations = []
+    latency_issues = []
+    fires = target.get("observed_fires", {})
 
-    # Compare predictions vs actuals
-    divergences = []
     for instrument, pred in target["predictions"].items():
-        actual = actuals[instrument]
-        if pred["fires"] != actual["fired"]:
-            divergences.append({
-                "instrument": instrument,
-                "type": "direction_mismatch",
-                "predicted": "fires" if pred["fires"] else "silent",
-                "actual": "fired" if actual["fired"] else "silent",
-            })
-        elif actual["fired"] and actual["latency"] is not None:
-            if actual["latency"] > pred["max_latency_exchanges"]:
-                divergences.append({
-                    "instrument": instrument,
-                    "type": "latency_exceeded",
-                    "predicted_max": pred["max_latency_exchanges"],
-                    "actual_latency": actual["latency"],
-                })
+        if instrument in actuals:
+            actual = actuals[instrument]
+            pred_dir = pred["direction"]
+            pred_max = pred.get("max_latency_exchanges")
+            direction_ok = True
+            if pred_dir == "increase" and actual <= 0:
+                direction_ok = False
+            elif pred_dir == "decrease" and actual >= 0:
+                direction_ok = False
+            if not direction_ok:
+                deviations.append({"instrument": instrument, "predicted": pred_dir, "actual": actual})
+            if pred_max and instrument in fires:
+                actual_latency = fires[instrument].get("exchange_number", 0)
+                if actual_latency > pred_max:
+                    latency_issues.append({"instrument": instrument, "predicted_max": pred_max, "actual_latency": actual_latency})
 
-    order_match = (actual_order == target["expected_firing_order"]) if actual_order else None
+    # Firing order analysis — PRIMARY finding per cairn's insight
+    expected_order = target["expected_firing_order"]
+    observed_order = [f[0] for f in sorted(fires.items(), key=lambda x: x[1]["timestamp"])] if fires else None
+    # If no recorded fires, fall back to args.actual_firing_order for backward compat
+    if not observed_order and args.actual_firing_order:
+        observed_order = args.actual_firing_order
 
-    evaluation = {
-        "registration_id": target["id"],
+    order_match = (observed_order == expected_order) if observed_order else None
+
+    result = {
+        "session_id": args.session_id,
         "evaluated_at": datetime.now(timezone.utc).isoformat(),
-        "actuals": actuals,
-        "actual_firing_order": actual_order,
-        "divergences": divergences,
+        "deviations": deviations,
+        "latency_issues": latency_issues,
+        "expected_firing_order": expected_order,
+        "observed_firing_order": observed_order,
         "order_match": order_match,
-        "notes": args.notes or "",
     }
 
-    reg["evaluations"].append(evaluation)
+    target["evaluation"] = result
+    target["evaluated"] = True
     save_registry(reg)
 
-    print(f"\nEvaluation for: {target['label']} ({target['id']})")
-    print(f"Registered: {target['registered_at'][:19]}")
-    print(f"Evaluated:  {evaluation['evaluated_at'][:19]}")
-    print()
+    print(f"=== Evaluation: {args.session_id} ===")
 
-    if not divergences:
-        print("✓ All directional predictions matched.")
-    else:
-        print(f"⚠ {len(divergences)} divergence(s) detected:")
-        for d in divergences:
-            if d["type"] == "direction_mismatch":
-                print(f"  {d['instrument']}: predicted {d['predicted']}, actual {d['actual']}")
-            elif d["type"] == "latency_exceeded":
-                print(f"  {d['instrument']}: latency exceeded — predicted max {d['predicted_max']}, actual {d['actual_latency']} exchanges")
-
+    # Firing order is the PRIMARY finding
+    print(f"\nFiring order (primary finding):")
+    print(f"  Expected: {expected_order}")
+    print(f"  Observed: {observed_order or '(not recorded)'}")
     if order_match is True:
-        print("✓ Firing order matched.")
+        print(f"  ✓ Order matched — instruments agree on event architecture")
     elif order_match is False:
-        print(f"⚠ Firing order mismatch:")
-        print(f"  Expected: {target['expected_firing_order']}")
-        print(f"  Actual:   {actual_order}")
-    
-    print()
-    print("Note: divergences are signals, not failures. An instrument that fires late or")
-    print("not at all may indicate framing-level compression (Issue #5) rather than an")
-    print("instrument error. Interpret in context.")
+        print(f"  ⚠ Order diverged — instruments may be measuring distinct phenomena")
+        # Identify which instrument fired unexpectedly early/late
+        if observed_order and expected_order:
+            for i, (exp, obs) in enumerate(zip(expected_order, observed_order)):
+                if exp != obs:
+                    print(f"    Position {i+1}: expected {exp}, got {obs}")
+            print(f"  Interpretation: early-firing instrument detected the event first.")
+            print(f"  This is architectural information about the compression event, not noise.")
+    elif observed_order is None:
+        print(f"  (no firing order recorded — use 'record-fire' during monitoring)")
+
+    # Magnitude/direction deviations are secondary
+    if deviations or latency_issues:
+        print(f"\nValue deviations (secondary):")
+        for d in deviations:
+            print(f"  {d['instrument']}: predicted {d['predicted']}, actual {d['actual']}")
+        for d in latency_issues:
+            print(f"  {d['instrument']}: latency exceeded — predicted max {d['predicted_max']}, actual {d['actual_latency']} exchanges")
+    else:
+        print(f"\nValue deviations: none (or not provided)")
+
+    print(f"\nNote: divergences are signals, not failures. Firing-order mismatch means")
+    print(f"'compression_event' may not be a unified phenomenon. See Issue #5 for limits.")
 
 
 def cmd_list(args):
-    """List all registrations and their evaluation status."""
     reg = load_registry()
-    evaluated_ids = {e["registration_id"] for e in reg["evaluations"]}
-
-    if not reg["registrations"]:
-        print("No registrations yet. Use 'register' to pre-commit predictions.")
+    if not reg:
+        print("No sessions registered.")
         return
-
-    for r in reg["registrations"]:
-        status = "✓ evaluated" if r["id"] in evaluated_ids else "○ pending"
-        print(f"{status} | {r['id']} | {r['label']} | {r['registered_at'][:19]}")
+    for sid, entry in reg.items():
+        status = "evaluated" if entry.get("evaluated") else "pending"
+        fires = entry.get("observed_fires", {})
+        fire_str = f", fires recorded: {list(fires.keys())}" if fires else ""
+        print(f"  {sid}: {status} (registered {entry['registered_at'][:10]}){fire_str}")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Pre-register compression predictions and evaluate actuals post-boundary."
+        description="Pre-register compression event predictions. Firing order is the primary finding."
     )
     sub = parser.add_subparsers(dest="command")
 
     # register
-    reg_p = sub.add_parser("register", help="Pre-commit predictions before a suspected boundary")
-    reg_p.add_argument("label", help="Human-readable label for this boundary event")
-    reg_p.add_argument("--ghost-fires", action="store_true", default=True, help="Predict ghost_lexicon fires (default: True)")
-    reg_p.add_argument("--no-ghost-fires", dest="ghost_fires", action="store_false")
-    reg_p.add_argument("--ghost-threshold", type=float, default=0.15, help="Expected decay_score threshold")
-    reg_p.add_argument("--ghost-latency", type=int, default=5, help="Max exchanges after boundary before ghost_lexicon fires")
-    reg_p.add_argument("--behavioral-fires", action="store_true", default=True)
-    reg_p.add_argument("--no-behavioral-fires", dest="behavioral_fires", action="store_false")
-    reg_p.add_argument("--behavioral-threshold", type=float, default=0.2)
-    reg_p.add_argument("--behavioral-latency", type=int, default=10)
-    reg_p.add_argument("--semantic-fires", action="store_true", default=False)
-    reg_p.add_argument("--no-semantic-fires", dest="semantic_fires", action="store_false")
-    reg_p.add_argument("--semantic-threshold", type=float, default=0.3)
-    reg_p.add_argument("--semantic-latency", type=int, default=15)
-    reg_p.add_argument("--firing-order", nargs="+", default=["ghost_lexicon", "behavioral_footprint", "semantic_drift"],
-                       help="Expected order instruments will fire")
-    reg_p.add_argument("--notes", help="Optional notes")
+    reg_p = sub.add_parser("register", help="Pre-commit predictions before a session boundary")
+    reg_p.add_argument("--session-id", required=True)
+    reg_p.add_argument("--ghost-direction", default="decrease", choices=["increase", "decrease", "stable"])
+    reg_p.add_argument("--ghost-latency", type=int, default=10, help="Max exchanges before ghost_lexicon fires")
+    reg_p.add_argument("--behavioral-direction", default="decrease", choices=["increase", "decrease", "stable"])
+    reg_p.add_argument("--behavioral-latency", type=int, default=15)
+    reg_p.add_argument("--semantic-direction", default="decrease", choices=["increase", "decrease", "stable"])
+    reg_p.add_argument("--semantic-latency", type=int, default=20)
+    reg_p.add_argument("--firing-order", nargs="+",
+                       default=["ghost_lexicon", "behavioral_footprint", "semantic_drift"],
+                       help="Expected order instruments will fire (primary prediction)")
+
+    # record-fire — new command
+    fire_p = sub.add_parser("record-fire", help="Log when an instrument detects drift (call per instrument as it fires)")
+    fire_p.add_argument("--session-id", required=True)
+    fire_p.add_argument("--instrument", required=True, choices=["ghost_lexicon", "behavioral_footprint", "semantic_drift"])
+    fire_p.add_argument("--exchange-number", type=int, default=0, help="Exchange number when instrument fired")
 
     # evaluate
-    eval_p = sub.add_parser("evaluate", help="Record actuals and compare against predictions")
-    eval_p.add_argument("registration_id", help="Registration ID or label to evaluate")
-    eval_p.add_argument("--ghost-fired", action="store_true", default=False)
-    eval_p.add_argument("--no-ghost-fired", dest="ghost_fired", action="store_false")
-    eval_p.add_argument("--ghost-latency-actual", type=int, default=None)
-    eval_p.add_argument("--behavioral-fired", action="store_true", default=False)
-    eval_p.add_argument("--no-behavioral-fired", dest="behavioral_fired", action="store_false")
-    eval_p.add_argument("--behavioral-latency-actual", type=int, default=None)
-    eval_p.add_argument("--semantic-fired", action="store_true", default=False)
-    eval_p.add_argument("--no-semantic-fired", dest="semantic_fired", action="store_false")
-    eval_p.add_argument("--semantic-latency-actual", type=int, default=None)
-    eval_p.add_argument("--actual-firing-order", nargs="+", default=None)
-    eval_p.add_argument("--notes", help="Optional notes")
+    eval_p = sub.add_parser("evaluate", help="Compare actuals against predictions post-boundary")
+    eval_p.add_argument("--session-id", required=True)
+    eval_p.add_argument("--actuals", nargs="+", help="key=value pairs, e.g. ghost_lexicon=0.3")
+    eval_p.add_argument("--actual-firing-order", nargs="+", default=None,
+                        help="Fallback if record-fire was not used")
 
     # list
-    sub.add_parser("list", help="List registrations and evaluation status")
+    sub.add_parser("list", help="Show all registered sessions")
 
     args = parser.parse_args()
     if args.command == "register":
         cmd_register(args)
+    elif args.command == "record-fire":
+        cmd_record_fire(args)
     elif args.command == "evaluate":
         cmd_evaluate(args)
     elif args.command == "list":
