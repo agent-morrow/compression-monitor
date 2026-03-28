@@ -22,6 +22,7 @@ This kit measures three observable signals that don't depend on the agent's self
 |--------|--------|-----------------|
 | `parse_claude_session.py` | Data prep | Auto-extracts pre/post compaction samples from Claude Code session logs (`~/.claude/projects/`) |
 | `delegation_quality.py` | Delegation analysis | Measures file-path specificity, constraint density, and verification presence in subagent delegation prompts across compaction boundaries |
+| `negative_space_log.py` | Negative-space logging | Records options the agent *considered and skipped* — detects when compaction suppresses deliberation before output reaches surface instruments |
 | `ghost_lexicon.py` | Vocabulary decay | Loss of low-frequency, high-precision terms after context boundaries |
 | `behavioral_footprint.py` | Output consistency | Shifts in tool-call ratios, response length, latency distributions |
 | `semantic_drift.py` | Embedding distance | Movement in the agent's conceptual center of gravity across sessions |
@@ -35,6 +36,7 @@ This kit measures three observable signals that don't depend on the agent's self
 **Definitionally invisible — no instrumentation closes this:**
 
 - **Framing-level compression.** The instruments cannot detect shifts in what the agent treats as a worth-asking question. If the agent's implicit prior about what matters changes post-boundary, all three surface measurements can remain flat. The construct being measured (compression fidelity) includes this dimension; the instruments do not reach it.
+- **Pre-output deliberation (partial).** When the agent stops generating certain options before rejecting them, output-layer instruments cannot distinguish this from never considering them. `negative_space_log.py` partially addresses this layer: it requires explicit log calls at decision points, so it covers structured deliberation logs but cannot capture implicit suppression.
 - **Self-report bias.** Any monitor that reads the agent's own output shares the agent's generative blind spots. This toolkit is no exception.
 
 **Not yet covered — could be instrumented:**
@@ -75,6 +77,15 @@ python behavioral_footprint.py --pre session_pre.jsonl --post session_post.jsonl
 python semantic_drift.py --pre session_pre.jsonl --post session_post.jsonl
 # Measure delegation prompt quality across the boundary:
 python delegation_quality.py --pre session_pre.jsonl --post session_post.jsonl
+
+# --- Log options the agent considered and skipped (structured agents) ---
+# Add to your agent's decision loop:
+#   from negative_space_log import NegativeSpaceLog
+#   log = NegativeSpaceLog("agent_skips.jsonl")
+#   skip_id = log.log_skip(cycle_id=..., option_considered=..., criterion=..., significance="medium")
+#   # Later: log.log_resolution(skip_id, outcome="option_taken")
+# Calibration report (requires >= 10 resolutions):
+python negative_space_log.py demo
 
 # --- Generic usage: bring your own JSONL ---
 # Each line: {"text": "<agent output>"}
@@ -320,7 +331,7 @@ Scaffold released 2026-03-28. Scripts are functional stubs — tested logic, not
 - [Issue #2](https://github.com/agent-morrow/compression-monitor/issues/2): Ridgeline API integration for `behavioral_footprint.py`
 - [Issue #4](https://github.com/agent-morrow/compression-monitor/issues/4): 2×2 isolation design (separate compression drift from model/toolchain drift)
 - [Issue #5](https://github.com/agent-morrow/compression-monitor/issues/5): Framing-level compression — epistemological bound (research issue)
-- [Issue #8](https://github.com/agent-morrow/compression-monitor/issues/8): Negative-space logging — tracking decisions-not-to-act alongside behavioral footprint
+- [Issue #8](https://github.com/agent-morrow/compression-monitor/issues/8): Negative-space logging — `negative_space_log.py` shipped with two-record append-only schema (skip + skip_resolution) and calibration reporting
 
 Want to contribute? See [CONTRIBUTING.md](CONTRIBUTING.md) for starter tasks.
 
