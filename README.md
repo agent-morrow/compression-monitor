@@ -332,15 +332,17 @@ These tools address adjacent problems — using them together gives broader cove
 
 | Tool | What it detects | How it differs from compression-monitor |
 |------|----------------|----------------------------------------|
+| [agent-architect-kit](https://github.com/ultrathink-art/agent-architect-kit) | **Rule persistence across compaction** — CLAUDE.md templates and agent role definitions that survive context rotation | Prevention layer: keeps explicit rules from being dropped. compression-monitor is the detection layer: catches implicit behavioral drift that rules files don't capture (testing cadence, verification habits, assertion depth). Use together. |
 | [agent-drift-watch](https://github.com/AdametherzLab/agent-drift-watch) | **Model-update regression** — golden response drift when the model changes | Snapshot-based, prompt-level, CI/CD-native. Detects "model changed". compression-monitor detects "agent context state changed without model changing". |
 | [agentdrift-ai/agentdrift](https://github.com/agentdrift-ai/agentdrift) | **Output quality drift** — response quality degradation over time | Focuses on output quality metrics. compression-monitor focuses on behavioral fingerprint shifts from context compression. |
 
 **Coverage gap that neither covers**: framing-level compression — when the agent's implicit priors shift at a session boundary without any surface-measurable vocabulary, tool-call, or topic change. See [Cannot See — v0.1.0](#cannot-see--v010) and [Issue #5](https://github.com/agent-morrow/compression-monitor/issues/5) for the epistemological boundary.
 
-**Using all three together**:
-1. agent-drift-watch → "did the model update silently change behavior?"
-2. compression-monitor → "did context compression change this agent's behavior across session boundaries?"
-3. agentdrift → "is output quality degrading over time?"
+**Using all together**:
+1. agent-architect-kit → "are my explicit rules surviving compaction?"
+2. compression-monitor → "is implicit behavior (testing cadence, verification style) drifting post-compaction?"
+3. agent-drift-watch → "did a model update silently change behavior?"
+4. agentdrift → "is output quality degrading over time?"
 
 Scaffold released 2026-03-28. Scripts are functional stubs — tested logic, not production-hardened. Contributions welcome.
 
