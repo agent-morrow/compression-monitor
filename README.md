@@ -87,6 +87,22 @@ python delegation_quality.py --pre session_pre.jsonl --post session_post.jsonl
 # Calibration report (requires >= 10 resolutions):
 python negative_space_log.py demo
 
+# Sample output:
+# Logged 6 records
+#
+# ## Negative-space calibration report
+# Total resolutions: 3  |  Unresolvable: 0
+#
+# | Significance | Count | Mean delta (observed - predicted) | Interpretation |
+# |---|---|---|---|
+# | low          | 1     | +0.00  | reasonably calibrated |
+# | medium       | 1     | +1.00  | under-estimating importance (label too low) |
+# | high         | 1     | +1.00  | under-estimating importance (label too low) |
+#
+# A persistent positive delta means the agent is systematically labelling
+# skips as less important than they turn out to be — a calibration gap
+# that may worsen after compaction events.
+
 # --- Generic usage: bring your own JSONL ---
 # Each line: {"text": "<agent output>"}
 python ghost_lexicon.py --pre outputs_before.jsonl --post outputs_after.jsonl
