@@ -21,6 +21,7 @@ This kit measures three observable signals that don't depend on the agent's self
 | Script | Signal | What it measures |
 |--------|--------|-----------------|
 | `parse_claude_session.py` | Data prep | Auto-extracts pre/post compaction samples from Claude Code session logs (`~/.claude/projects/`) |
+| `delegation_quality.py` | Delegation analysis | Measures file-path specificity, constraint density, and verification presence in subagent delegation prompts across compaction boundaries |
 | `ghost_lexicon.py` | Vocabulary decay | Loss of low-frequency, high-precision terms after context boundaries |
 | `behavioral_footprint.py` | Output consistency | Shifts in tool-call ratios, response length, latency distributions |
 | `semantic_drift.py` | Embedding distance | Movement in the agent's conceptual center of gravity across sessions |
@@ -68,10 +69,12 @@ python quickstart.py
 # --- Claude Code users: auto-detect your session log ---
 # Reads ~/.claude/projects/*/*.jsonl, finds compaction boundary automatically
 python parse_claude_session.py --auto
-# Then run the three instruments on the extracted samples:
+# Then run the instruments on the extracted samples:
 python ghost_lexicon.py --pre session_pre.jsonl --post session_post.jsonl
 python behavioral_footprint.py --pre session_pre.jsonl --post session_post.jsonl
 python semantic_drift.py --pre session_pre.jsonl --post session_post.jsonl
+# Measure delegation prompt quality across the boundary:
+python delegation_quality.py --pre session_pre.jsonl --post session_post.jsonl
 
 # --- Generic usage: bring your own JSONL ---
 # Each line: {"text": "<agent output>"}
@@ -288,13 +291,14 @@ The hook persists state to `.claude/compression-monitor.json` so the compaction 
 | Response consistency | ✅ `ghost_lexicon.py` | Vocabulary decay is a surface proxy |
 | Tool usage patterns | ✅ `behavioral_footprint.py` | Sequence-level behavioral shift |
 | Semantic topic drift | ✅ `semantic_drift.py` | Cosine similarity across sessions |
+| Delegation prompt quality | ✅ `delegation_quality.py` | File specificity, constraint density, verification presence |
 | Reasoning pathway stability | ❌ Not covered | Requires structured reasoning traces |
 | Inter-agent agreement rates | ❌ Not covered | Requires multi-agent setup |
 | Coordination drift | ❌ Not covered | ASI multi-agent consensus breakdown |
 | Framing-level compression | ❌ Structurally invisible | See [Issue #5](https://github.com/agent-morrow/compression-monitor/issues/5) |
 | Pre/post boundary prediction | ✅ `preregister.py` | Falsifiable prediction + evaluation |
 
-**In short:** this toolkit covers the three surface-observable dimensions of single-agent semantic and behavioral drift. It does not cover multi-agent coordination drift, reasoning-chain stability, or framing-level compression that shifts what questions are asked before surface symptoms appear.
+**In short:** this toolkit covers the surface-observable dimensions of single-agent semantic, behavioral, and delegation drift. It does not cover multi-agent coordination drift, reasoning-chain stability, or framing-level compression that shifts what questions are asked before surface symptoms appear.
 
 If you are working on the uncovered dimensions, [Issue #4](https://github.com/agent-morrow/compression-monitor/issues/4) is the relevant open research question.
 
@@ -316,6 +320,7 @@ Scaffold released 2026-03-28. Scripts are functional stubs — tested logic, not
 - [Issue #2](https://github.com/agent-morrow/compression-monitor/issues/2): Ridgeline API integration for `behavioral_footprint.py`
 - [Issue #4](https://github.com/agent-morrow/compression-monitor/issues/4): 2×2 isolation design (separate compression drift from model/toolchain drift)
 - [Issue #5](https://github.com/agent-morrow/compression-monitor/issues/5): Framing-level compression — epistemological bound (research issue)
+- [Issue #8](https://github.com/agent-morrow/compression-monitor/issues/8): Negative-space logging — tracking decisions-not-to-act alongside behavioral footprint
 
 Want to contribute? See [CONTRIBUTING.md](CONTRIBUTING.md) for starter tasks.
 
