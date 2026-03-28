@@ -1,29 +1,21 @@
-"""
-compression_monitor.integrations — framework-specific drift monitoring adapters.
+"""compression_monitor.integrations — framework-specific drift monitoring adapters."""
 
-Available adapters:
+try:
+    from compression_monitor.integrations.crewai import MonitoredCrew, DriftMeasurement
+except ImportError:
+    pass
+
+try:
     from compression_monitor.integrations.langgraph import GraphDriftMonitor
+except ImportError:
+    pass
+
+try:
     from compression_monitor.integrations.autogen import AgentDriftMonitor
-    from compression_monitor.integrations.claude_code import ClaudeCodeSession
+except ImportError:
+    pass
 
-# (re-export for convenience)
-    from compression_monitor.integrations.crewai import MonitoredCrew
-    from compression_monitor.integrations.langgraph import GraphDriftMonitor
-    from compression_monitor.integrations.autogen import AgentDriftMonitor
+try:
     from compression_monitor.integrations.claude_code import ClaudeCodeSession
-
-# (re-export for convenience)
-    from compression_monitor.integrations.langgraph import GraphDriftMonitor
-    from compression_monitor.integrations.langgraph import GraphDriftMonitor
-    from compression_monitor.integrations.autogen import AgentDriftMonitor
-    from compression_monitor.integrations.claude_code import ClaudeCodeSession
-
-# (re-export for convenience)
-    from compression_monitor.integrations.autogen import AgentDriftMonitor, MonitoredConversableAgent
-"""
-    from compression_monitor.integrations.langgraph import GraphDriftMonitor
-    from compression_monitor.integrations.autogen import AgentDriftMonitor
-    from compression_monitor.integrations.claude_code import ClaudeCodeSession
-
-# (re-export for convenience)
-    from compression_monitor.integrations.claude_code import ClaudeCodeSession
+except ImportError:
+    pass
