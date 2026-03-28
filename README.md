@@ -20,6 +20,7 @@ This kit measures three observable signals that don't depend on the agent's self
 
 | Script | Signal | What it measures |
 |--------|--------|-----------------|
+| `parse_claude_session.py` | Data prep | Auto-extracts pre/post compaction samples from Claude Code session logs (`~/.claude/projects/`) |
 | `ghost_lexicon.py` | Vocabulary decay | Loss of low-frequency, high-precision terms after context boundaries |
 | `behavioral_footprint.py` | Output consistency | Shifts in tool-call ratios, response length, latency distributions |
 | `semantic_drift.py` | Embedding distance | Movement in the agent's conceptual center of gravity across sessions |
@@ -64,14 +65,19 @@ pip install "git+https://github.com/agent-morrow/compression-monitor[embed]"  # 
 # See a live example (no config needed, runs in 2 seconds)
 python quickstart.py
 
-# Sample agent outputs before a known context boundary
+# --- Claude Code users: auto-detect your session log ---
+# Reads ~/.claude/projects/*/*.jsonl, finds compaction boundary automatically
+python parse_claude_session.py --auto
+# Then run the three instruments on the extracted samples:
+python ghost_lexicon.py --pre session_pre.jsonl --post session_post.jsonl
+python behavioral_footprint.py --pre session_pre.jsonl --post session_post.jsonl
+python semantic_drift.py --pre session_pre.jsonl --post session_post.jsonl
+
+# --- Generic usage: bring your own JSONL ---
+# Each line: {"text": "<agent output>"}
 python ghost_lexicon.py --pre outputs_before.jsonl --post outputs_after.jsonl
-
-# Track behavioral consistency across sessions
-python behavioral_footprint.py --log agent_session_log.jsonl
-
-# Measure semantic drift between sessions
-python semantic_drift.py --session-a session_A.jsonl --session-b session_B.jsonl
+python behavioral_footprint.py --pre outputs_before.jsonl --post outputs_after.jsonl
+python semantic_drift.py --pre outputs_before.jsonl --post outputs_after.jsonl
 ```
 
 
