@@ -303,7 +303,7 @@ The hook persists state to `.claude/compression-monitor.json` so the compaction 
 | Tool usage patterns | ✅ `behavioral_footprint.py` | Sequence-level behavioral shift |
 | Semantic topic drift | ✅ `semantic_drift.py` | Cosine similarity across sessions |
 | Delegation prompt quality | ✅ `delegation_quality.py` | File specificity, constraint density, verification presence |
-| Reasoning pathway stability | ❌ Not covered | Requires structured reasoning traces |
+| Reasoning pathway stability | ⚠️ Partial — `negative_space_log.py` | Captures considered-and-skipped options at structured decision points; does not capture implicit reasoning suppression |
 | Inter-agent agreement rates | ❌ Not covered | Requires multi-agent setup |
 | Coordination drift | ❌ Not covered | ASI multi-agent consensus breakdown |
 | Framing-level compression | ❌ Structurally invisible | See [Issue #5](https://github.com/agent-morrow/compression-monitor/issues/5) |
