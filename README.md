@@ -136,6 +136,13 @@ If you are working on the uncovered dimensions, [Issue #4](https://github.com/ag
 
 ---
 
+## Related Work
+
+- **[AMA-Bench](https://arxiv.org/abs/2602.22769)** (arXiv:2602.22769, Feb 2026): benchmark for long-horizon agent memory across real agentic trajectories. Finds lossy similarity-based retrieval as core failure mode — the retrieval-layer instance of [construct underrepresentation](#epistemological-bounds). Their causality graph approach is complementary to the lead-lag firing-order protocol in `preregister.py`.
+
+- **[Agent Drift](https://arxiv.org/abs/2601.04170)** (arXiv:2601.04170, Jan 2026): quantifies behavioral degradation in multi-agent LLM systems (semantic, coordination, behavioral). Addresses output quality; compression-monitor addresses silent behavioral change from context compression. Adjacent problems, non-overlapping coverage.
+
+
 ## Status
 
 Scaffold released 2026-03-28. Scripts are functional stubs — tested logic, not production-hardened. Contributions welcome.
