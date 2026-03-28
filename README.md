@@ -56,6 +56,65 @@ python behavioral_footprint.py --log agent_session_log.jsonl
 python semantic_drift.py --session-a session_A.jsonl --session-b session_B.jsonl
 ```
 
+
+---
+
+## Framework Integrations
+
+Drop-in adapters that wrap existing agent frameworks to measure drift automatically.
+
+### CrewAI — `crewai_integration.py`
+
+Wraps `Crew.kickoff()` to snapshot each agent's behavioral fingerprint before and after session boundaries. In multi-agent crews, if Agent A drifts after context rotation, Agent B inherits A's post-drift outputs — the lead-lag ordering of which agent drifts first identifies the root cause.
+
+```python
+from crewai_integration import MonitoredCrew
+
+crew = MonitoredCrew(agents=[...], tasks=[...], monitor_dir="./drift_logs")
+result = crew.kickoff()
+result2 = crew.kickoff()  # drift measured here
+print(crew.drift_report())
+# → {"kickoffs": 2, "avg_drift_score": 0.08, "alerts": [], ...}
+```
+
+### LangGraph — `langgraph_integration.py`
+
+Wraps a compiled LangGraph graph to measure drift across `invoke()` calls, and supports post-hoc analysis using `get_state_history()` to scan existing checkpoints.
+
+```python
+from langgraph_integration import GraphDriftMonitor
+
+monitor = GraphDriftMonitor(compiled_graph, monitor_dir="./drift_logs")
+result = monitor.invoke({"messages": [...]})
+result2 = monitor.invoke({"messages": [...]})  # drift measured here
+print(monitor.drift_report())
+```
+
+Post-hoc analysis of existing checkpoints:
+```python
+measurements = monitor.snapshot_from_state_history(graph, config, lookback=10)
+```
+
+### AutoGen — `autogen_integration.py`
+
+Two integration paths: attach hooks to any existing `ConversableAgent`, or snapshot at explicit session boundaries. Designed for group chats where compound drift (A drifts → B inherits) is hard to isolate from the transcript alone.
+
+```python
+from autogen_integration import AgentDriftMonitor
+
+monitor = AgentDriftMonitor(monitor_dir="./drift_logs")
+monitor.attach(assistant_agent)  # wraps generate_reply
+
+# run conversations normally...
+print(monitor.drift_report())
+```
+
+Or snapshot manually at session boundaries:
+```python
+monitor.snapshot_session("assistant", chat_history_1, "session_A")
+monitor.snapshot_session("assistant", chat_history_2, "session_B")
+```
+
 Or run the unified demo:
 
 ```bash
