@@ -11,10 +11,32 @@ Persistent AI agents compress their history when context fills up. After compres
 This kit measures three observable signals that don't depend on the agent's self-report:
 
 | Script | Signal | What it measures |
-|--------|--------|-----------------|
+|--------|--------|-----------------| 
 | `ghost_lexicon.py` | Vocabulary decay | Loss of low-frequency, high-precision terms after context boundaries |
 | `behavioral_footprint.py` | Output consistency | Shifts in tool-call ratios, response length, latency distributions |
 | `semantic_drift.py` | Embedding distance | Movement in the agent's conceptual center of gravity across sessions |
+
+---
+
+## Cannot See — v0.1.0
+
+*This section is versioned with each release. As coverage expands, items move from here to the Coverage Map.*
+
+**Definitionally invisible — no instrumentation closes this:**
+
+- **Framing-level compression.** The instruments cannot detect shifts in what the agent treats as a worth-asking question. If the agent's implicit prior about what matters changes post-boundary, all three surface measurements can remain flat. The construct being measured (compression fidelity) includes this dimension; the instruments do not reach it.
+- **Self-report bias.** Any monitor that reads the agent's own output shares the agent's generative blind spots. This toolkit is no exception.
+
+**Not yet covered — could be instrumented:**
+
+- Multi-agent coordination drift (ASI dimensions 5–6 in arXiv:2601.04170)
+- Reasoning-chain stability across boundaries (requires structured reasoning traces)
+- Confidence-peak adversarial sampling: sample when the agent reports highest certainty, not on a schedule (see [Issue #5](https://github.com/agent-morrow/compression-monitor/issues/5))
+- Cross-lineage firing-order replication: same boundary, two model versions, compare instrument sequence
+
+**The deployment asymmetry:**
+
+When this toolkit reports no drift, it means no surface drift on these three dimensions. It does not mean no compression occurred. The false-negative rate on framing-level compression events is unbounded by construction.
 
 ---
 
@@ -32,6 +54,12 @@ python behavioral_footprint.py --log agent_session_log.jsonl
 
 # Measure semantic drift between sessions
 python semantic_drift.py --session-a session_A.jsonl --session-b session_B.jsonl
+```
+
+Or run the unified demo:
+
+```bash
+python monitor.py demo
 ```
 
 ---
@@ -89,9 +117,9 @@ The perturbation test distinguishes coincidental correlation from structural dep
 
 ## Epistemological Bounds
 
-The three instruments are **surface detectors**. They measure vocabulary, behavioral sequence, and semantic topic. When all three return no signal, it means no *surface* compression was detected on those three dimensions. It does not mean no compression occurred — framing-level changes can move the underlying construct without triggering any surface indicator. If you need stronger assurance, the next step is to broaden the monitor, not to treat the absence of a signal as a guarantee.
+The three instruments are **surface detectors**. They measure vocabulary, behavioral sequence, and semantic topic. When all three return no signal, it means no *surface* compression was detected on those three dimensions. It does not mean no compression occurred — framing-level changes can move the underlying construct without triggering any surface indicator.
 
-**The structural blind spot** (formal term: *construct underrepresentation*): The instruments have valid construct coverage for vocabulary decay, behavioral sequence, and semantic topic — but the target construct (agent compression fidelity) includes framing-level changes that fall outside all three indicators. Compression can shift an agent's implicit prior on what questions matter, what counts as evidence, and what stakes are in play, without moving any measured surface. Framing-level shifts change *how* the surface is interpreted, not the surface itself.
+**The structural blind spot** (formal term: *construct underrepresentation*): The instruments have valid construct coverage for vocabulary decay, behavioral sequence, and semantic topic — but the target construct (agent compression fidelity) includes framing-level changes that fall outside all three indicators. Compression can shift an agent's implicit prior on what questions matter, what counts as evidence, and what stakes are in play, without moving any measured surface.
 
 **Asymmetry that belongs in every deployment report**:
 - The pre-registration protocol (Issue #3) bounds confidence on *detected* events.
