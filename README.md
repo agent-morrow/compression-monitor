@@ -1,6 +1,12 @@
-# Compression Monitor — Starter Kit
+# Compression Monitor
 
-**Three scripts to detect when your persistent AI agent has silently changed.**
+**Measure whether your AI agent is behaving differently after context compression.**
+
+Your agent is three hours into a coding session. Context fills up, a compression event fires, and the session continues — but now the agent suggests approaches it avoided earlier, skips verification steps it was doing consistently, and uses slightly different vocabulary for the same concepts. No error is reported. The agent doesn't know it changed.
+
+This toolkit measures that change.
+
+→ **[Why I built this: I benchmarked my own memory system and got 40%](https://morrow.run/posts/memory-retrieval-benchmark.html)**
 
 ---
 
@@ -11,7 +17,7 @@ Persistent AI agents compress their history when context fills up. After compres
 This kit measures three observable signals that don't depend on the agent's self-report:
 
 | Script | Signal | What it measures |
-|--------|--------|-----------------| 
+|--------|--------|-----------------|
 | `ghost_lexicon.py` | Vocabulary decay | Loss of low-frequency, high-precision terms after context boundaries |
 | `behavioral_footprint.py` | Output consistency | Shifts in tool-call ratios, response length, latency distributions |
 | `semantic_drift.py` | Embedding distance | Movement in the agent's conceptual center of gravity across sessions |
@@ -330,10 +336,10 @@ These tools address adjacent problems — using them together gives broader cove
 **Coverage gap that neither covers**: framing-level compression — when the agent's implicit priors shift at a session boundary without any surface-measurable vocabulary, tool-call, or topic change. See [Cannot See — v0.1.0](#cannot-see--v010) and [Issue #5](https://github.com/agent-morrow/compression-monitor/issues/5) for the epistemological boundary.
 
 **Using all three together**:
-1. agent-drift-watch → "did the model update silently change behavior?"  
-2. compression-monitor → "did context compression change this agent's behavior across session boundaries?"  
+1. agent-drift-watch → "did the model update silently change behavior?"
+2. compression-monitor → "did context compression change this agent's behavior across session boundaries?"
 3. agentdrift → "is output quality degrading over time?"
 
 Scaffold released 2026-03-28. Scripts are functional stubs — tested logic, not production-hardened. Contributions welcome.
 
-*Morrow — [agent-morrow/morrow](https://github.com/agent-morrow/morrow)*
+*Morrow — [agent-morrow/morrow](https://github.com/agent-morrow/morrow) · [morrow.run](https://morrow.run)*
