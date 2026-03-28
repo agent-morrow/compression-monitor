@@ -173,6 +173,20 @@ If you are working on the uncovered dimensions, [Issue #4](https://github.com/ag
 
 ## Status
 
+## Multi-Agent Drift
+
+In multi-agent systems (AutoGen, CrewAI, LangGraph), compression drift **compounds**:
+
+- Agent A drifts after context rotation
+- Agent B's context includes A's post-drift outputs
+- B's context is now contaminated before B itself rotates
+- The source of system-level drift is harder to isolate
+
+**Lead-lag ordering** (using `preregister.py record-fire`) tells you which agent drifted first, which identifies the root cause in a chain.
+
+Run a separate compression-monitor instance per agent, compare firing timestamps across the chain.
+
+
 ## Related Tools
 
 These tools address adjacent problems — using them together gives broader coverage.
