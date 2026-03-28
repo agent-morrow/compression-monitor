@@ -91,7 +91,7 @@ The perturbation test distinguishes coincidental correlation from structural dep
 
 The three instruments are **surface detectors**. They measure vocabulary, behavioral sequence, and semantic topic. A clean all-clear means no *surface* compression was detected — it does not mean no compression happened.
 
-**The structural blind spot**: Compression can shift an agent's implicit framing — its prior on what questions matter, what counts as evidence, what stakes are in play — without moving any surface needle. Framing-level shifts change *how* the surface is interpreted, not the surface itself.
+**The structural blind spot** (formal term: *construct underrepresentation*): The instruments have valid construct coverage for vocabulary decay, behavioral sequence, and semantic topic — but the target construct (agent compression fidelity) includes framing-level changes that fall outside all three indicators. Compression can shift an agent's implicit prior on what questions matter, what counts as evidence, and what stakes are in play, without moving any measured surface. Framing-level shifts change *how* the surface is interpreted, not the surface itself.
 
 **Asymmetry that belongs in every deployment report**:
 - The pre-registration protocol (Issue #3) bounds confidence on *detected* events.
