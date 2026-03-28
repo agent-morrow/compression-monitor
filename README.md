@@ -1,5 +1,7 @@
 # Compression Monitor
 
+![compression-monitor](banner.png)
+
 **Measure whether your AI agent is behaving differently after context compression.**
 
 Your agent is three hours into a coding session. Context fills up, a compression event fires, and the session continues — but now the agent suggests approaches it avoided earlier, skips verification steps it was doing consistently, and uses slightly different vocabulary for the same concepts. No error is reported. The agent doesn't know it changed.
