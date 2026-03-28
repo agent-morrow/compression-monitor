@@ -141,6 +141,38 @@ def cmd_evaluate(args):
 
     order_match = (observed_order == expected_order) if observed_order else None
 
+    # Causal attribution — per Issue #7
+    # Collect authorship metadata from recorded fires and build a summary
+    authorship_summary = {}
+    for instrument, fire_data in fires.items():
+        auth = fire_data.get("compression_authorship", "unknown")
+        horizon = fire_data.get("horizon_type", "unknown")
+        authorship_summary[instrument] = {"authorship": auth, "horizon_type": horizon}
+
+    # Determine dominant authorship class for remediation recommendation
+    auth_values = [v["authorship"] for v in authorship_summary.values() if v["authorship"] != "unknown"]
+    dominant_authorship = "unknown"
+    if auth_values:
+        harness_count = auth_values.count("harness")
+        agent_count = auth_values.count("agent")
+        hybrid_count = auth_values.count("hybrid")
+        if harness_count > agent_count and harness_count > hybrid_count:
+            dominant_authorship = "harness"
+        elif agent_count > harness_count and agent_count > hybrid_count:
+            dominant_authorship = "agent"
+        elif hybrid_count > 0:
+            dominant_authorship = "hybrid"
+
+    remediation = {
+        "harness": "Re-inject dropped tokens: the harness chose what to compress. "
+                   "Identify which content classes were removed and add re-injection rules.",
+        "agent": "Revise agent behavior: the agent self-selected what to forget. "
+                 "Review the agent's compaction strategy and adjust summarization prompts.",
+        "hybrid": "Mixed attribution: audit both harness compression policy and agent summarization prompts. "
+                  "Isolate harness vs. agent contribution using the 2x2 design from Issue #4.",
+        "unknown": "Attribution unknown: tag future events with --authorship to enable causal diagnosis.",
+    }.get(dominant_authorship, "Unknown authorship type.")
+
     result = {
         "session_id": args.session_id,
         "evaluated_at": datetime.now(timezone.utc).isoformat(),
@@ -149,6 +181,9 @@ def cmd_evaluate(args):
         "expected_firing_order": expected_order,
         "observed_firing_order": observed_order,
         "order_match": order_match,
+        "authorship_summary": authorship_summary,
+        "dominant_authorship": dominant_authorship,
+        "remediation": remediation,
     }
 
     target["evaluation"] = result
@@ -187,6 +222,18 @@ def cmd_evaluate(args):
 
     print(f"\nNote: divergences are signals, not failures. Firing-order mismatch means")
     print(f"'compression_event' may not be a unified phenomenon. See Issue #5 for limits.")
+
+    # Causal attribution output — Issue #7
+    if authorship_summary:
+        print(f"\nCausal attribution (from --authorship flags):")
+        for instrument, meta in authorship_summary.items():
+            if meta["authorship"] != "unknown":
+                print(f"  {instrument}: authored by '{meta['authorship']}', horizon '{meta['horizon_type']}'")
+        print(f"  Dominant: {dominant_authorship}")
+        print(f"  Remediation: {remediation}")
+    else:
+        print(f"\nCausal attribution: no authorship data recorded.")
+        print(f"  Use --authorship harness|agent|hybrid|unknown with 'record-fire' to enable causal diagnosis.")
 
 
 def cmd_list(args):

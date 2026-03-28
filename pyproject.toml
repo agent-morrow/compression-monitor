@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "compression-monitor"
-version = "0.2.0"
+version = "0.2.1"
 description = "Monitor session-boundary behavioral drift in LLM agents: ghost lexicon decay, behavioral footprint shift, and semantic topic drift."
 readme = "README.md"
 license = {text = "MIT"}
