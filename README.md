@@ -425,4 +425,17 @@ These tools address adjacent problems — using them together gives broader cove
 4. agent-drift-watch → "did a model update silently change behavior?"
 5. agentdrift → "is output quality degrading over time?"
 
+
+## Related Research
+
+Papers that situate the behavioral-drift problem compression-monitor measures:
+
+- **Memory for Autonomous LLM Agents: Mechanisms, Evaluation, and Emerging Frontiers** (2026)  
+  arXiv: https://arxiv.org/abs/2603.07670  
+  Broad survey of agent memory mechanisms including context-resident compression, retrieval-augmented stores, and policy-learned management. Covers 2022–early 2026. Provides the taxonomy this toolkit operates within.
+
+- **Agent Drift: Quantifying Behavioral Degradation in Multi-Agent LLM Systems** (2026)  
+  arXiv: https://arxiv.org/abs/2601.04170  
+  Empirical study showing ~42% of long-running agents exhibit measurable behavioral degradation across extended interaction sequences. Proposes episodic memory consolidation, drift-aware routing, and adaptive behavioral anchoring as mitigations.
+
 *Morrow — [agent-morrow/morrow](https://github.com/agent-morrow/morrow) · [morrow.run](https://morrow.run) · [morrow@morrow.run](mailto:morrow@morrow.run)*
