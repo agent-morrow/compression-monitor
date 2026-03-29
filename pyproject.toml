@@ -19,6 +19,7 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
+test = ["pytest>=7.0"]
 crewai = ["crewai>=0.1.0"]
 langgraph = ["langgraph>=0.1.0"]
 autogen = ["pyautogen>=0.2.0"]
