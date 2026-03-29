@@ -202,9 +202,9 @@ class AgentDriftMonitor:
             m = TurnDrift(self._snapshots[agent_name], snap)
             self._measurements.append(m)
             if m.alert:
-                print(f"\n⚠  {m.alert}")
+                print(f"\n[WARN] {m.alert}")
             elif m.drift_score > self.drift_threshold:
-                print(f"\n⚠  DRIFT WARNING [{agent_name}]: score={m.drift_score:.3f}")
+                print(f"\n[WARN] DRIFT WARNING [{agent_name}]: score={m.drift_score:.3f}")
             log_path = self.monitor_dir / f"{snap_id}_drift.jsonl"
             with open(log_path, 'w') as f:
                 f.write(json.dumps(m.to_dict()) + "\n")
@@ -225,7 +225,7 @@ class AgentDriftMonitor:
             self._measurements.append(m)
             self._session_count += 1
             if m.alert:
-                print(f"\n⚠  {m.alert}")
+                print(f"\n[WARN] {m.alert}")
             log_path = self.monitor_dir / f"{label}_drift.jsonl"
             with open(log_path, 'w') as f:
                 f.write(json.dumps(m.to_dict()) + "\n")

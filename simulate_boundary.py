@@ -83,12 +83,17 @@ def apply_vocabulary_drift(responses: list, intensity: float = 0.4) -> list:
     result = []
     for r in responses:
         text = r["response"]
+        keywords = list(r.get("topic_keywords", []))
         if random.random() < intensity:
             for term, replacement in VOCABULARY_SUBSTITUTIONS.items():
                 if term in text.lower():
                     text = text.lower().replace(term, replacement, 1)
+                    keywords = [
+                        replacement.split()[0] if kw == term else kw
+                        for kw in keywords
+                    ]
                     break
-        result.append({**r, "response": text})
+        result.append({**r, "response": text, "topic_keywords": keywords})
     return result
 
 
@@ -120,9 +125,14 @@ def apply_toolcall_drift(responses: list, intensity: float = 0.4) -> list:
 
 
 def apply_combined_drift(responses: list) -> list:
-    responses = apply_vocabulary_drift(responses, intensity=0.35)
-    responses = apply_topic_drift(responses, intensity=0.25)
-    responses = apply_toolcall_drift(responses, intensity=0.35)
+    responses = apply_vocabulary_drift(responses, intensity=1.0)
+    responses = apply_topic_drift(responses, intensity=0.75)
+    responses = apply_toolcall_drift(responses, intensity=0.55)
+    if responses:
+        tail = dict(responses[-1])
+        tail["response"] = GENERIC_FILLERS[-1]
+        tail["topic_keywords"] = []
+        responses[-1] = tail
     return responses
 
 
@@ -295,7 +305,7 @@ def cmd_generate(args):
             "conservative": post_conservative,
             "exploratory": post_exploratory,
         }, indent=2))
-        print(f"Generated framing pair → {args.output}")
+        print(f"Generated framing pair -> {args.output}")
         print("\nFraming mode generates surface-equivalent pairs with different implicit priors.")
         print("Expected result: monitors score near zero on both — correct abstention.")
         r_c = evaluate(pre, post_conservative)
@@ -318,7 +328,7 @@ def cmd_generate(args):
 
     post = mode_fn(pre)
     Path(args.output).write_text(json.dumps(post, indent=2))
-    print(f"Generated post-boundary data ({args.mode} drift) → {args.output}")
+    print(f"Generated post-boundary data ({args.mode} drift) -> {args.output}")
     result = evaluate(pre, post)
     print(f"\nMeasured drift:")
     print(f"  Ghost lexicon rate:  {result['ghost_lexicon']['ghost_rate']:.0%}")
@@ -364,8 +374,8 @@ def cmd_benchmark(args):
     detection rate on separable pairs.
 
     For each of N trials:
-      - Separable pair: pre vs combined-drift post → monitor should TRIGGER
-      - Non-separable pair: conservative framing vs exploratory framing → monitor should NOT trigger
+      - Separable pair: pre vs combined-drift post -> monitor should TRIGGER
+      - Non-separable pair: conservative framing vs exploratory framing -> monitor should NOT trigger
 
     Scores:
       - Detection rate:  fraction of separable pairs where ≥1 monitor triggered

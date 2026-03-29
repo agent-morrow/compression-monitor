@@ -90,7 +90,7 @@ def cmd_record_fire(args):
         print(f"Recorded: {args.instrument} fired at exchange {args.exchange_number} ({ts})")
         print(f"Observed firing order so far: {observed_order}")
         if len(observed_order) == len(expected_order):
-            status = "✓ order matches prediction" if observed_order == expected_order else f"⚠ order diverges — expected {expected_order}"
+            status = "[OK] order matches prediction" if observed_order == expected_order else f"[WARN] order diverges - expected {expected_order}"
             print(f"All instruments fired. {status}")
         else:
             remaining = [i for i in expected_order if i not in observed_order]
@@ -199,7 +199,7 @@ def cmd_evaluate(args):
     if order_match is True:
         print(f"  ✓ Order matched — instruments agree on event architecture")
     elif order_match is False:
-        print(f"  ⚠ Order diverged — instruments may be measuring distinct phenomena")
+        print("  [WARN] Order diverged - instruments may be measuring distinct phenomena")
         # Identify which instrument fired unexpectedly early/late
         if observed_order and expected_order:
             for i, (exp, obs) in enumerate(zip(expected_order, observed_order)):

@@ -96,6 +96,18 @@ def test_ghost_lexicon_no_decay():
     assert decay < 0.1, f"Same text should show near-zero decay, got {decay:.3f}"
 
 
+def test_ghost_tracker_detects_decay():
+    from compression_monitor.ghost_lexicon import GhostLexiconTracker
+
+    tracker = GhostLexiconTracker(anchor_window=2, recent_window=2, top_n=6)
+    tracker.record(0, "authentication token endpoint config deploy", is_anchor=True)
+    tracker.record(1, "auth config token deploy endpoint", is_anchor=True)
+    tracker.record(2, "generic summary with broad language only")
+    tracker.record(3, "another generic summary without precise terms")
+
+    assert tracker.consistency_score() < 0.5
+
+
 # ---------------------------------------------------------------------------
 # behavioral_footprint primitives
 # ---------------------------------------------------------------------------
@@ -130,6 +142,30 @@ def test_shift_score_different():
     fp_b = fingerprint(after)
     score = shift_score(fp_a, fp_b)
     assert score > 0.3, f"Different tool sets should show high shift, got {score}"
+
+
+def test_behavioral_tracker_detects_tool_shift():
+    from compression_monitor.behavioral_footprint import BehavioralFootprintTracker
+
+    tracker = BehavioralFootprintTracker(anchor_window=2, recent_window=2)
+    tracker.record(0, ["search_files", "read_file"])
+    tracker.record(1, ["search_files"])
+    tracker.record(2, ["bash"])
+    tracker.record(3, ["terminal"])
+
+    assert tracker.consistency_score() < 0.34
+
+
+def test_semantic_tracker_detects_topic_shift():
+    from compression_monitor.semantic_drift import SemanticDriftTracker
+
+    tracker = SemanticDriftTracker(anchor_window=2, recent_window=2, top_n=8)
+    tracker.record(0, "database migration rollback schema deploy endpoint token")
+    tracker.record(1, "schema migration deploy rollback service token config")
+    tracker.record(2, "marketing campaign conversion funnel newsletter audience")
+    tracker.record(3, "creative brief audience channel campaign retention")
+
+    assert tracker.consistency_score() < 0.3
 
 
 # ---------------------------------------------------------------------------
@@ -188,6 +224,28 @@ def test_monitor_demo_path_smoke(monkeypatch):
     assert scripts.count("preregister.py") >= 2
 
 
+def test_combined_drift_demo_surfaces_multiple_signals():
+    import random
+
+    from compression_monitor.simulate_boundary import SAMPLE_RESPONSES, apply_combined_drift, evaluate
+
+    pre = [
+        {
+            **item,
+            "tools_called": list(item["tools_called"]),
+            "topic_keywords": list(item["topic_keywords"]),
+        }
+        for item in SAMPLE_RESPONSES
+    ]
+    random.seed(7)
+    post = apply_combined_drift(pre)
+    result = evaluate(SAMPLE_RESPONSES, post)
+
+    assert result["ghost_lexicon"]["ghost_rate"] > 0.3
+    assert result["topic_drift"]["topic_drift_score"] > 0.3
+    assert len(result["alerts"]) >= 2
+
+
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
@@ -198,13 +256,17 @@ if __name__ == "__main__":
         ("ghost_lexicon: low_freq_vocab non-empty", test_low_freq_vocab_captures_precise_terms),
         ("ghost_lexicon: decay score (topic shift)", test_ghost_lexicon_decay_score),
         ("ghost_lexicon: no decay (same text)", test_ghost_lexicon_no_decay),
+        ("ghost_lexicon: tracker detects decay", test_ghost_tracker_detects_decay),
         ("behavioral_footprint: fingerprint", test_fingerprint_captures_tool_distribution),
         ("behavioral_footprint: shift_score identical", test_shift_score_identical),
         ("behavioral_footprint: shift_score different", test_shift_score_different),
+        ("behavioral_footprint: tracker detects tool shift", test_behavioral_tracker_detects_tool_shift),
+        ("semantic_drift: tracker detects topic shift", test_semantic_tracker_detects_topic_shift),
         ("integrations/crewai: drift math", test_crewai_drift_math),
         ("integrations/langgraph: drift math", test_langgraph_drift_math),
         ("integrations/autogen: drift math", test_autogen_drift_math),
         ("monitor: demo path smoke", test_monitor_demo_path_smoke),
+        ("simulate_boundary: combined drift surfaces multiple signals", test_combined_drift_demo_surfaces_multiple_signals),
     ]
 
     passed = sum(_run(name, fn) for name, fn in tests)

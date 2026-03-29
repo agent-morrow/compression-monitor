@@ -14,9 +14,9 @@ Output: decay score (0.0 = no decay, 1.0 = complete vocabulary loss),
 
 import argparse
 import json
+import re
 import sys
 from collections import Counter
-import re
 
 
 def tokenize(text: str) -> list[str]:
@@ -49,6 +49,62 @@ def low_frequency_vocab(texts: list[str], top_n: int = 200) -> set[str]:
     counts = Counter(all_tokens)
     top_terms = {term for term, _ in counts.most_common(top_n)}
     return {term for term, count in counts.items() if count >= 2 and term not in top_terms}
+
+
+def _term_counter(text: str) -> Counter:
+    """Return a token counter for a single text fragment."""
+    return Counter(tokenize(text))
+
+
+class GhostLexiconTracker:
+    """Lightweight rolling tracker for lexicon survival across boundaries."""
+
+    def __init__(self, anchor_window: int = 3, recent_window: int = 3, top_n: int = 20):
+        self.anchor_window = max(anchor_window, 1)
+        self.recent_window = max(recent_window, 1)
+        self.top_n = max(top_n, 1)
+        self._history: list[Counter] = []
+        self._anchor_history: list[Counter] = []
+
+    def _merge(self, counters: list[Counter]) -> Counter:
+        merged: Counter = Counter()
+        for counter in counters:
+            merged.update(counter)
+        return merged
+
+    def update(self, text: str) -> None:
+        counter = _term_counter(text)
+        if counter:
+            self._history.append(counter)
+
+    def record(self, step_index: int, text: str, is_anchor: bool = False) -> None:
+        del step_index  # step ordering matters, absolute value does not.
+        counter = _term_counter(text)
+        if not counter:
+            return
+        self._history.append(counter)
+        if is_anchor or len(self._anchor_history) < self.anchor_window:
+            self._anchor_history.append(counter)
+
+    def current_distribution(self) -> dict[str, int]:
+        recent = self._history[-self.recent_window :]
+        return dict(self._merge(recent))
+
+    def consistency_score(self) -> float:
+        if not self._history:
+            return 1.0
+
+        anchor_source = self._anchor_history or self._history[: self.anchor_window]
+        anchor_counts = self._merge(anchor_source)
+        current_counts = self._merge(self._history[-self.recent_window :])
+
+        anchor_terms = [term for term, _ in anchor_counts.most_common(self.top_n)]
+        if not anchor_terms:
+            return 1.0
+
+        current_terms = set(current_counts)
+        survivors = sum(1 for term in anchor_terms if term in current_terms)
+        return round(survivors / len(anchor_terms), 4)
 
 
 def main():

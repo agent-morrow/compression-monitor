@@ -17,7 +17,9 @@ Output: drift score (0.0 = identical, 1.0 = maximally different), interpretation
 import argparse
 import json
 import random
+import re
 import sys
+from collections import Counter
 
 
 def load_texts(path: str) -> list[str]:
@@ -35,17 +37,66 @@ def load_texts(path: str) -> list[str]:
 
 def centroid(embeddings):
     import numpy as np
+
     mat = np.array(embeddings)
     return mat.mean(axis=0)
 
 
 def cosine_distance(a, b):
     import numpy as np
+
     norm_a = np.linalg.norm(a)
     norm_b = np.linalg.norm(b)
     if norm_a == 0 or norm_b == 0:
         return 1.0
     return float(1.0 - np.dot(a, b) / (norm_a * norm_b))
+
+
+def _keyword_counter(text: str) -> Counter:
+    return Counter(re.findall(r"\b[a-z][a-z'-]{2,}\b", text.lower()))
+
+
+class SemanticDriftTracker:
+    """Fallback online semantic tracker based on keyword overlap windows."""
+
+    def __init__(self, anchor_window: int = 3, recent_window: int = 3, top_n: int = 20):
+        self.anchor_window = max(anchor_window, 1)
+        self.recent_window = max(recent_window, 1)
+        self.top_n = max(top_n, 1)
+        self._history: list[Counter] = []
+
+    def _merge(self, counters: list[Counter]) -> Counter:
+        merged: Counter = Counter()
+        for counter in counters:
+            merged.update(counter)
+        return merged
+
+    def update(self, text: str) -> None:
+        counter = _keyword_counter(text)
+        if counter:
+            self._history.append(counter)
+
+    def record(self, step_index: int, text: str) -> None:
+        del step_index
+        self.update(text)
+
+    def consistency_score(self) -> float:
+        if len(self._history) < 2:
+            return 1.0
+
+        anchor_counts = self._merge(self._history[: self.anchor_window])
+        recent_counts = self._merge(self._history[-self.recent_window :])
+
+        anchor_terms = {term for term, _ in anchor_counts.most_common(self.top_n)}
+        recent_terms = {term for term, _ in recent_counts.most_common(self.top_n)}
+        if not anchor_terms and not recent_terms:
+            return 1.0
+
+        union = anchor_terms | recent_terms
+        if not union:
+            return 1.0
+
+        return round(len(anchor_terms & recent_terms) / len(union), 4)
 
 
 def main():
@@ -69,7 +120,6 @@ def main():
         print("ERROR: One or both session files are empty or missing 'text' fields.", file=sys.stderr)
         sys.exit(1)
 
-    # Sample for efficiency
     sample_a = random.sample(texts_a, min(args.sample, len(texts_a)))
     sample_b = random.sample(texts_b, min(args.sample, len(texts_b)))
 
@@ -89,7 +139,16 @@ def main():
     print(f"session_a_texts: {len(texts_a)} (sampled {len(sample_a)})")
     print(f"session_b_texts: {len(texts_b)} (sampled {len(sample_b)})")
     print(f"drift_score: {drift:.4f}")
-    print(f"interpretation: {'HIGH — significant conceptual shift' if drift > 0.15 else 'MODERATE — detectable drift' if drift > 0.05 else 'LOW — sessions conceptually stable'}")
+    print(
+        "interpretation: "
+        + (
+            "HIGH — significant conceptual shift"
+            if drift > 0.15
+            else "MODERATE — detectable drift"
+            if drift > 0.05
+            else "LOW — sessions conceptually stable"
+        )
+    )
 
 
 if __name__ == "__main__":

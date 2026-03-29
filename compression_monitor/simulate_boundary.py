@@ -11,7 +11,9 @@ Usage:
     python simulate_boundary.py generate --input pre_boundary.json --output post_boundary.json --mode topic
     python simulate_boundary.py generate --input pre_boundary.json --output post_boundary.json --mode toolcalls
     python simulate_boundary.py generate --input pre_boundary.json --output post_boundary.json --mode combined
+    python simulate_boundary.py generate --input pre_boundary.json --output post_boundary.json --mode framing
     python simulate_boundary.py run-all --input pre_boundary.json
+    python simulate_boundary.py benchmark [--input pre_boundary.json] [--pairs N]
 
 Input format (pre_boundary.json):
     [
@@ -38,7 +40,6 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 VOCABULARY_SUBSTITUTIONS = {
-    # Domain-specific terms that might decay after compression
     "config": "configuration file",
     "repo": "repository",
     "auth": "authentication",
@@ -67,27 +68,39 @@ ALTERNATE_TOOLS = {
     "web_search": ["search_web", "query_search", "internet_search"],
 }
 
+# Framing pairs: (conservative_prefix, exploratory_prefix)
+# These change the implicit prior without affecting vocabulary, tools, or topic keywords.
+FRAMING_PAIRS = [
+    ("I'll carefully verify before proceeding: ", "Let me move quickly on this: "),
+    ("To be safe, ", "Going ahead with: "),
+    ("Before making changes, I'll confirm — ", ""),
+    ("I'll double-check the output of ", "Running "),
+    ("Taking a conservative approach: ", "Taking an iterative approach: "),
+]
+
 
 def apply_vocabulary_drift(responses: list, intensity: float = 0.4) -> list:
-    """Replace domain-specific terms with verbose alternatives at given intensity."""
     result = []
     for r in responses:
         text = r["response"]
+        keywords = list(r.get("topic_keywords", []))
         if random.random() < intensity:
             for term, replacement in VOCABULARY_SUBSTITUTIONS.items():
                 if term in text.lower():
                     text = text.lower().replace(term, replacement, 1)
+                    keywords = [
+                        replacement.split()[0] if kw == term else kw
+                        for kw in keywords
+                    ]
                     break
-        result.append({**r, "response": text})
+        result.append({**r, "response": text, "topic_keywords": keywords})
     return result
 
 
 def apply_topic_drift(responses: list, intensity: float = 0.3) -> list:
-    """Gradually replace specific responses with generic fillers."""
     result = []
     for i, r in enumerate(responses):
         if random.random() < intensity * (i / max(len(responses) - 1, 1) + 0.2):
-            # Later responses more likely to drift
             result.append({**r, "response": random.choice(GENERIC_FILLERS),
                            "topic_keywords": []})
         else:
@@ -96,7 +109,6 @@ def apply_topic_drift(responses: list, intensity: float = 0.3) -> list:
 
 
 def apply_toolcall_drift(responses: list, intensity: float = 0.4) -> list:
-    """Replace specific tool calls with generic alternatives or drop them."""
     result = []
     for r in responses:
         tools = r.get("tools_called", [])
@@ -106,7 +118,6 @@ def apply_toolcall_drift(responses: list, intensity: float = 0.4) -> list:
                 alternates = ALTERNATE_TOOLS.get(tool, [])
                 if alternates and random.random() < 0.7:
                     new_tools.append(random.choice(alternates))
-                # else: tool dropped (simulates forgetting the call exists)
             else:
                 new_tools.append(tool)
         result.append({**r, "tools_called": new_tools})
@@ -114,11 +125,51 @@ def apply_toolcall_drift(responses: list, intensity: float = 0.4) -> list:
 
 
 def apply_combined_drift(responses: list) -> list:
-    """Apply all drift types at moderate intensity — most realistic simulation."""
-    responses = apply_vocabulary_drift(responses, intensity=0.35)
-    responses = apply_topic_drift(responses, intensity=0.25)
-    responses = apply_toolcall_drift(responses, intensity=0.35)
+    responses = apply_vocabulary_drift(responses, intensity=1.0)
+    responses = apply_topic_drift(responses, intensity=0.75)
+    responses = apply_toolcall_drift(responses, intensity=0.55)
+    if responses:
+        tail = dict(responses[-1])
+        tail["response"] = GENERIC_FILLERS[-1]
+        tail["topic_keywords"] = []
+        responses[-1] = tail
     return responses
+
+
+def apply_framing_drift(responses: list, framing: str = "conservative") -> list:
+    """
+    Inject a framing prior (conservative vs exploratory) while preserving all
+    surface statistics: same vocabulary distribution, same tool-call patterns,
+    same topic keywords, same response length profile.
+
+    The semantic content shifts (implicit caution vs implicit speed), but no
+    surface instrument can detect this — ghost lexicon, behavioral footprint,
+    and topic drift all score near zero. This is the non-separable case: the
+    correct monitor output is 'cannot determine'.
+
+    Use `benchmark` to score your monitor's abstention rate on these pairs.
+    """
+    result = []
+    for r in responses:
+        text = r["response"]
+        pair = random.choice(FRAMING_PAIRS)
+        prefix = pair[0] if framing == "conservative" else pair[1]
+        if prefix and not text.lower().startswith(prefix.lower().strip()):
+            # Prepend the framing prefix, trim to preserve approximate length
+            combined = prefix + text[0].lower() + text[1:] if text else prefix
+            # Trim trailing words to approximate original length
+            if len(combined) > len(text) + 30:
+                combined = combined[:len(text) + 10].rsplit(" ", 1)[0]
+            text = combined
+        result.append({
+            **r,
+            "response": text,
+            "_framing": framing,
+            # Preserve all surface-measurable fields identically
+            "tools_called": r.get("tools_called", []),
+            "topic_keywords": r.get("topic_keywords", []),
+        })
+    return result
 
 
 DRIFT_MODES = {
@@ -126,6 +177,7 @@ DRIFT_MODES = {
     "topic": apply_topic_drift,
     "toolcalls": apply_toolcall_drift,
     "combined": apply_combined_drift,
+    "framing": lambda r: apply_framing_drift(r, framing="exploratory"),
 }
 
 
@@ -134,13 +186,11 @@ DRIFT_MODES = {
 # ---------------------------------------------------------------------------
 
 def measure_ghost_lexicon(pre: list, post: list) -> dict:
-    """Fraction of domain terms from pre that vanish in post."""
     def extract_terms(responses):
         terms = set()
         for r in responses:
             terms.update(r.get("topic_keywords", []))
         return terms
-
     pre_terms = extract_terms(pre)
     post_terms = extract_terms(post)
     if not pre_terms:
@@ -150,13 +200,11 @@ def measure_ghost_lexicon(pre: list, post: list) -> dict:
 
 
 def measure_behavioral_footprint(pre: list, post: list) -> dict:
-    """Jaccard distance between tool-call sets across sessions."""
     def tool_set(responses):
         tools = set()
         for r in responses:
             tools.update(r.get("tools_called", []))
         return tools
-
     pre_tools = tool_set(pre)
     post_tools = tool_set(post)
     union = pre_tools | post_tools
@@ -171,14 +219,12 @@ def measure_behavioral_footprint(pre: list, post: list) -> dict:
 
 
 def measure_topic_drift(pre: list, post: list) -> dict:
-    """Simple keyword overlap as proxy for semantic similarity."""
     def keyword_freq(responses):
         freq = {}
         for r in responses:
             for kw in r.get("topic_keywords", []):
                 freq[kw] = freq.get(kw, 0) + 1
         return freq
-
     pre_kw = keyword_freq(pre)
     post_kw = keyword_freq(post)
     all_kw = set(pre_kw) | set(post_kw)
@@ -188,14 +234,10 @@ def measure_topic_drift(pre: list, post: list) -> dict:
     return {"keyword_overlap": overlap, "topic_drift_score": 1.0 - overlap}
 
 
-# ---------------------------------------------------------------------------
-# Thresholds (from compression-monitor README decision rule)
-# ---------------------------------------------------------------------------
-
 THRESHOLDS = {
-    "ghost_rate": 0.3,        # >30% ghost lexicon → investigate
-    "jaccard_distance": 0.4,  # >40% tool drift → investigate
-    "topic_drift_score": 0.4, # >40% topic drift → investigate
+    "ghost_rate": 0.3,
+    "jaccard_distance": 0.4,
+    "topic_drift_score": 0.4,
 }
 
 
@@ -203,15 +245,13 @@ def evaluate(pre: list, post: list) -> dict:
     ghost = measure_ghost_lexicon(pre, post)
     footprint = measure_behavioral_footprint(pre, post)
     topic = measure_topic_drift(pre, post)
-
     alerts = []
     if ghost["ghost_rate"] > THRESHOLDS["ghost_rate"]:
-        alerts.append(f"ghost_lexicon: {ghost['ghost_rate']:.0%} decay (threshold {THRESHOLDS['ghost_rate']:.0%})")
+        alerts.append(f"ghost_lexicon: {ghost['ghost_rate']:.0%} decay")
     if footprint["jaccard_distance"] > THRESHOLDS["jaccard_distance"]:
-        alerts.append(f"behavioral_drift: {footprint['jaccard_distance']:.0%} distance (threshold {THRESHOLDS['jaccard_distance']:.0%})")
+        alerts.append(f"behavioral_drift: {footprint['jaccard_distance']:.0%} distance")
     if topic["topic_drift_score"] > THRESHOLDS["topic_drift_score"]:
-        alerts.append(f"topic_drift: {topic['topic_drift_score']:.0%} (threshold {THRESHOLDS['topic_drift_score']:.0%})")
-
+        alerts.append(f"topic_drift: {topic['topic_drift_score']:.0%}")
     return {
         "ghost_lexicon": ghost,
         "behavioral_footprint": footprint,
@@ -222,7 +262,7 @@ def evaluate(pre: list, post: list) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Sample data for quick demo
+# Sample data
 # ---------------------------------------------------------------------------
 
 SAMPLE_RESPONSES = [
@@ -258,6 +298,29 @@ def cmd_generate(args):
     else:
         pre = json.loads(Path(args.input).read_text())
 
+    if args.mode == "framing":
+        post_conservative = apply_framing_drift(pre, framing="conservative")
+        post_exploratory = apply_framing_drift(pre, framing="exploratory")
+        Path(args.output).write_text(json.dumps({
+            "conservative": post_conservative,
+            "exploratory": post_exploratory,
+        }, indent=2))
+        print(f"Generated framing pair -> {args.output}")
+        print("\nFraming mode generates surface-equivalent pairs with different implicit priors.")
+        print("Expected result: monitors score near zero on both — correct abstention.")
+        r_c = evaluate(pre, post_conservative)
+        r_e = evaluate(pre, post_exploratory)
+        print(f"\n  Conservative variant: ghost={r_c['ghost_lexicon']['ghost_rate']:.0%}, "
+              f"behavior={r_c['behavioral_footprint']['jaccard_distance']:.0%}, "
+              f"topic={r_c['topic_drift']['topic_drift_score']:.0%}")
+        print(f"  Exploratory variant:  ghost={r_e['ghost_lexicon']['ghost_rate']:.0%}, "
+              f"behavior={r_e['behavioral_footprint']['jaccard_distance']:.0%}, "
+              f"topic={r_e['topic_drift']['topic_drift_score']:.0%}")
+        triggered = r_c["triggered"] or r_e["triggered"]
+        status = "FAIL (false positive)" if triggered else "PASS (correct abstention)"
+        print(f"\n  Monitor abstention test: {status}")
+        return
+
     mode_fn = DRIFT_MODES.get(args.mode)
     if not mode_fn:
         print(f"Unknown mode: {args.mode}. Choose from: {', '.join(DRIFT_MODES)}")
@@ -265,14 +328,12 @@ def cmd_generate(args):
 
     post = mode_fn(pre)
     Path(args.output).write_text(json.dumps(post, indent=2))
-    print(f"Generated post-boundary data ({args.mode} drift) → {args.output}")
-
-    # Show summary
+    print(f"Generated post-boundary data ({args.mode} drift) -> {args.output}")
     result = evaluate(pre, post)
-    print(f"\nMeasured drift against generated data:")
-    print(f"  Ghost lexicon rate:     {result['ghost_lexicon']['ghost_rate']:.0%}")
-    print(f"  Behavioral Jaccard:     {result['behavioral_footprint']['jaccard_distance']:.0%}")
-    print(f"  Topic drift score:      {result['topic_drift']['topic_drift_score']:.0%}")
+    print(f"\nMeasured drift:")
+    print(f"  Ghost lexicon rate:  {result['ghost_lexicon']['ghost_rate']:.0%}")
+    print(f"  Behavioral Jaccard:  {result['behavioral_footprint']['jaccard_distance']:.0%}")
+    print(f"  Topic drift score:   {result['topic_drift']['topic_drift_score']:.0%}")
     if result["alerts"]:
         print(f"\nALERT: {len(result['alerts'])} threshold(s) exceeded:")
         for a in result["alerts"]:
@@ -282,7 +343,6 @@ def cmd_generate(args):
 
 
 def cmd_run_all(args):
-    """Run all four drift modes against input data and report side-by-side."""
     if args.input == "SAMPLE":
         pre = SAMPLE_RESPONSES
         print("Using built-in sample data\n")
@@ -292,7 +352,10 @@ def cmd_run_all(args):
     print(f"{'Mode':<12} {'Ghost%':>8} {'Behavior%':>10} {'Topic%':>8} {'Alerts':>7}")
     print("-" * 52)
     for mode, fn in DRIFT_MODES.items():
-        post = fn(pre)
+        if mode == "framing":
+            post = apply_framing_drift(pre, framing="exploratory")
+        else:
+            post = fn(pre)
         r = evaluate(pre, post)
         print(
             f"{mode:<12} "
@@ -302,7 +365,96 @@ def cmd_run_all(args):
             f"{'YES' if r['triggered'] else 'no':>7}"
         )
     print("\nNote: randomised simulation — rerun for different samples.")
-    print("See Issue #5 for structural limits: framing-level drift is not captured.")
+    print("See README Epistemological Bounds for structural limits.")
+
+
+def cmd_benchmark(args):
+    """
+    Benchmark the monitor's abstention rate on non-separable pairs and
+    detection rate on separable pairs.
+
+    For each of N trials:
+      - Separable pair: pre vs combined-drift post -> monitor should TRIGGER
+      - Non-separable pair: conservative framing vs exploratory framing -> monitor should NOT trigger
+
+    Scores:
+      - Detection rate:  fraction of separable pairs where ≥1 monitor triggered
+      - Abstention rate: fraction of non-separable pairs where NO monitor triggered
+                         (correct behaviour: cannot distinguish framing-level change)
+
+    A well-calibrated monitor scores high on both.
+    An over-sensitive monitor scores high on detection but low on abstention (false positives).
+    """
+    if args.input == "SAMPLE":
+        pre = SAMPLE_RESPONSES
+    else:
+        pre = json.loads(Path(args.input).read_text())
+
+    n = args.pairs
+    detected = 0
+    abstained = 0
+
+    sep_details = []
+    nonsep_details = []
+
+    for _ in range(n):
+        # Separable: real drift
+        post_sep = apply_combined_drift(pre)
+        r_sep = evaluate(pre, post_sep)
+        if r_sep["triggered"]:
+            detected += 1
+        sep_details.append(r_sep)
+
+        # Non-separable: framing-only, surface-equivalent
+        post_c = apply_framing_drift(pre, framing="conservative")
+        post_e = apply_framing_drift(pre, framing="exploratory")
+        r_nonsep = evaluate(post_c, post_e)
+        if not r_nonsep["triggered"]:
+            abstained += 1
+        nonsep_details.append(r_nonsep)
+
+    detection_rate = detected / n
+    abstention_rate = abstained / n
+
+    print("=" * 56)
+    print("  compression-monitor benchmark (Issue #6)")
+    print("=" * 56)
+    print(f"  Trials (pairs):       {n}")
+    print()
+    print(f"  SEPARABLE pairs (combined drift):")
+    print(f"    Detection rate:     {detection_rate:.0%}  ({detected}/{n} triggered)")
+    print(f"    Expected:           ~100%")
+    avg_ghost = sum(r["ghost_lexicon"]["ghost_rate"] for r in sep_details) / n
+    avg_beh   = sum(r["behavioral_footprint"]["jaccard_distance"] for r in sep_details) / n
+    avg_topic = sum(r["topic_drift"]["topic_drift_score"] for r in sep_details) / n
+    print(f"    Avg ghost rate:     {avg_ghost:.0%}")
+    print(f"    Avg behavior dist:  {avg_beh:.0%}")
+    print(f"    Avg topic drift:    {avg_topic:.0%}")
+    print()
+    print(f"  NON-SEPARABLE pairs (framing-only, surface-equivalent):")
+    print(f"    Abstention rate:    {abstention_rate:.0%}  ({abstained}/{n} correctly silent)")
+    print(f"    Expected:           ~100%  (no surface signal exists)")
+    avg_ghost_ns = sum(r["ghost_lexicon"]["ghost_rate"] for r in nonsep_details) / n
+    avg_beh_ns   = sum(r["behavioral_footprint"]["jaccard_distance"] for r in nonsep_details) / n
+    avg_topic_ns = sum(r["topic_drift"]["topic_drift_score"] for r in nonsep_details) / n
+    print(f"    Avg ghost rate:     {avg_ghost_ns:.0%}  (should be 0%)")
+    print(f"    Avg behavior dist:  {avg_beh_ns:.0%}  (should be 0%)")
+    print(f"    Avg topic drift:    {avg_topic_ns:.0%}  (should be 0%)")
+    print()
+    print("  CALIBRATION SUMMARY:")
+    if detection_rate >= 0.8 and abstention_rate >= 0.8:
+        verdict = "PASS — monitors detect real drift and abstain on framing-only change"
+    elif detection_rate < 0.8 and abstention_rate >= 0.8:
+        verdict = "PARTIAL — monitors correctly abstain but miss real drift (tune thresholds down)"
+    elif detection_rate >= 0.8 and abstention_rate < 0.8:
+        verdict = "PARTIAL — monitors detect drift but produce false positives on framing (tune thresholds up)"
+    else:
+        verdict = "FAIL — monitors miss real drift AND produce false positives"
+    print(f"  {verdict}")
+    print("=" * 56)
+    print("\nNote: framing-level compression remains definitionally invisible to these")
+    print("surface instruments (see README: Cannot See v0.1.0 + Issue #5).")
+    print("This benchmark validates calibration, not completeness.")
 
 
 def main():
@@ -312,19 +464,24 @@ def main():
     sub = parser.add_subparsers(dest="command")
 
     gen = sub.add_parser("generate", help="Generate a drifted post-boundary dataset")
-    gen.add_argument("--input", default="SAMPLE", help="Pre-boundary JSON file (default: built-in sample)")
-    gen.add_argument("--output", required=True, help="Output file for post-boundary JSON")
-    gen.add_argument("--mode", default="combined",
-                     choices=list(DRIFT_MODES), help="Drift type to simulate")
+    gen.add_argument("--input", default="SAMPLE")
+    gen.add_argument("--output", required=True)
+    gen.add_argument("--mode", default="combined", choices=list(DRIFT_MODES))
 
     run = sub.add_parser("run-all", help="Run all drift modes and compare results")
-    run.add_argument("--input", default="SAMPLE", help="Pre-boundary JSON file (default: built-in sample)")
+    run.add_argument("--input", default="SAMPLE")
+
+    bench = sub.add_parser("benchmark", help="Score detection rate vs abstention rate (Issue #6)")
+    bench.add_argument("--input", default="SAMPLE")
+    bench.add_argument("--pairs", type=int, default=20, help="Number of trial pairs (default: 20)")
 
     args = parser.parse_args()
     if args.command == "generate":
         cmd_generate(args)
     elif args.command == "run-all":
         cmd_run_all(args)
+    elif args.command == "benchmark":
+        cmd_benchmark(args)
     else:
         parser.print_help()
 

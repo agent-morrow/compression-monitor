@@ -220,9 +220,9 @@ class MonitoredCrew:
                 new_measurements.append(m)
 
                 if m.alert:
-                    print(f"\n⚠  {m.alert}")
+                    print(f"\n[WARN] {m.alert}")
                 elif m.drift_score > self.drift_threshold:
-                    print(f"\n⚠  DRIFT WARNING [{agent_key}]: score={m.drift_score:.3f} (threshold={self.drift_threshold})")
+                    print(f"\n[WARN] DRIFT WARNING [{agent_key}]: score={m.drift_score:.3f} (threshold={self.drift_threshold})")
 
                 with open(log_path, 'a') as f:
                     f.write(json.dumps(m.to_dict()) + "\n")

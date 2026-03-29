@@ -170,15 +170,15 @@ def watch_loop(session_path: Path, out_prefix: str, interval: int) -> None:
                 write_samples(post, out_post)
                 ts = time.strftime("%H:%M:%S")
                 print(f"\n[{ts}] Compaction boundary detected!", flush=True)
-                print(f"  Pre-compaction turns:  {len(pre):>4}  → {out_pre}", flush=True)
-                print(f"  Post-compaction turns: {len(post):>4}  → {out_post}", flush=True)
+                print(f"  Pre-compaction turns:  {len(pre):>4}  -> {out_pre}", flush=True)
+                print(f"  Post-compaction turns: {len(post):>4}  -> {out_post}", flush=True)
                 last_post_count = len(post)
             elif boundary_seen and len(post) != last_post_count:
                 # New post-compaction turns arriving — update output files
                 write_samples(pre, out_pre)
                 write_samples(post, out_post)
                 ts = time.strftime("%H:%M:%S")
-                print(f"[{ts}] Updated: {len(post)} post-compaction turns → {out_post}", flush=True)
+                print(f"[{ts}] Updated: {len(post)} post-compaction turns -> {out_post}", flush=True)
                 last_post_count = len(post)
             elif not boundary_seen:
                 ts = time.strftime("%H:%M:%S")
@@ -253,8 +253,8 @@ def main() -> None:
     write_samples(pre, out_pre)
     write_samples(post, out_post)
 
-    print(f"Pre-compaction turns:  {len(pre):>4}  → {out_pre}")
-    print(f"Post-compaction turns: {len(post):>4}  → {out_post}")
+    print(f"Pre-compaction turns:  {len(pre):>4}  -> {out_pre}")
+    print(f"Post-compaction turns: {len(post):>4}  -> {out_post}")
 
     if pre and post:
         print()

@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+build/
+*.egg-info/
+preregister_state.json
+compression_monitor/preregister_state.json

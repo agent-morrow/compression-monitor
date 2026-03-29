@@ -242,7 +242,7 @@ class GraphDriftMonitor:
                 measurements.append(m)
                 self._measurements.append(m)
                 if m.alert:
-                    print(f"\n⚠  {m.alert}")
+                    print(f"\n[WARN] {m.alert}")
                 log_path = self.monitor_dir / f"history_analysis_{int(time.time())}.jsonl"
                 with open(log_path, 'a') as f:
                     f.write(json.dumps(m.to_dict()) + "\n")
@@ -256,9 +256,9 @@ class GraphDriftMonitor:
             self._measurements.append(m)
 
             if m.alert:
-                print(f"\n⚠  {m.alert}")
+                print(f"\n[WARN] {m.alert}")
             elif m.drift_score > self.drift_threshold:
-                print(f"\n⚠  DRIFT WARNING: score={m.drift_score:.3f} (threshold={self.drift_threshold})")
+                print(f"\n[WARN] DRIFT WARNING: score={m.drift_score:.3f} (threshold={self.drift_threshold})")
 
             log_path = self.monitor_dir / f"{invoke_id}_drift.jsonl"
             with open(log_path, 'w') as f:
