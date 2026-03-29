@@ -18,11 +18,10 @@ showing what firing-order analysis looks like in practice.
 """
 
 import argparse
-import json
 import os
+import random
 import subprocess
 import sys
-import tempfile
 from datetime import datetime, timezone
 
 TOOLS_DIR = os.path.dirname(__file__)
@@ -58,16 +57,34 @@ def cmd_run(args):
 
     # Step 2: Run simulation and capture metrics
     print("\nStep 2: Running monitors on boundary data...")
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-        tmp = f.name
 
-    # Import simulation directly to get structured results
-    sys.path.insert(0, TOOLS_DIR)
-    from simulate_boundary import generate_synthetic, apply_vocabulary_drift, \
-        apply_topic_drift, apply_toolcall_drift, apply_combined_drift, evaluate, \
-        SAMPLE_PRE_BOUNDARY, THRESHOLDS
+    # Seed the synthetic demo so the smoke test is stable across runs.
+    random.seed(7)
 
-    pre = generate_synthetic(SAMPLE_PRE_BOUNDARY, 20)
+    try:
+        from .simulate_boundary import (
+            SAMPLE_RESPONSES,
+            THRESHOLDS,
+            apply_combined_drift,
+            apply_toolcall_drift,
+            apply_topic_drift,
+            apply_vocabulary_drift,
+            evaluate,
+        )
+    except ImportError:
+        # Support direct execution from the repo root, e.g. `python monitor.py demo`.
+        sys.path.insert(0, TOOLS_DIR)
+        from simulate_boundary import (  # type: ignore
+            SAMPLE_RESPONSES,
+            THRESHOLDS,
+            apply_combined_drift,
+            apply_toolcall_drift,
+            apply_topic_drift,
+            apply_vocabulary_drift,
+            evaluate,
+        )
+
+    pre = [dict(item) for item in SAMPLE_RESPONSES]
     if mode == "vocabulary":
         post = apply_vocabulary_drift(pre[:])
     elif mode == "topic":

@@ -167,6 +167,27 @@ def test_autogen_drift_math():
     assert drift.alert is not None
 
 
+def test_monitor_demo_path_smoke(monkeypatch):
+    import compression_monitor.monitor as monitor
+
+    class Result:
+        returncode = 0
+        stdout = "ok"
+        stderr = ""
+
+    calls = []
+
+    def fake_run_script(script, args, capture=True):
+        calls.append((script, args, capture))
+        return Result()
+
+    monkeypatch.setattr(monitor, "run_script", fake_run_script)
+    monitor.cmd_run(type("Args", (), {"session_id": "demo-test", "mode": "combined"})())
+
+    scripts = [script for script, _, _ in calls]
+    assert scripts.count("preregister.py") >= 2
+
+
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
@@ -183,6 +204,7 @@ if __name__ == "__main__":
         ("integrations/crewai: drift math", test_crewai_drift_math),
         ("integrations/langgraph: drift math", test_langgraph_drift_math),
         ("integrations/autogen: drift math", test_autogen_drift_math),
+        ("monitor: demo path smoke", test_monitor_demo_path_smoke),
     ]
 
     passed = sum(_run(name, fn) for name, fn in tests)

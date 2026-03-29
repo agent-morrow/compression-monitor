@@ -12,8 +12,8 @@ Framework integrations (optional):
     from compression_monitor.integrations.autogen import AgentDriftMonitor
 
 Quick start:
-    from compression_monitor.simulate_boundary import evaluate, generate_synthetic, SAMPLE_PRE_BOUNDARY
-    pre = generate_synthetic(SAMPLE_PRE_BOUNDARY, 20)
+    from compression_monitor.simulate_boundary import evaluate, SAMPLE_RESPONSES
+    pre = [dict(item) for item in SAMPLE_RESPONSES]
     result = evaluate(pre, pre)  # no drift
     print(result["alerts"])
 
@@ -24,5 +24,5 @@ Or use the CLI:
 from . import ghost_lexicon, behavioral_footprint, semantic_drift
 from . import integrations
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 __all__ = ["ghost_lexicon", "behavioral_footprint", "semantic_drift", "integrations"]
