@@ -204,6 +204,40 @@ python examples/sdk_compaction_hook_demo.py --polling
 python examples/sdk_compaction_hook_demo.py
 ```
 
+### DeerFlow — `deer_flow_integration.py`
+
+Monitors behavioral consistency at **session resume points** in [ByteDance DeerFlow](https://github.com/bytedance/deer-flow) multi-day projects. Checkpoints behavioral fingerprint at session end; compares at Day 2 resume. Ghost terms surface constraints that were compacted away before the agent acts.
+
+```python
+from deer_flow_integration import DeerFlowSessionMonitor
+
+monitor = DeerFlowSessionMonitor()
+
+# End of Day 1
+monitor.checkpoint_session("project-id", session_outputs)
+
+# Day 2 resume — check before acting
+report = monitor.check_resume_consistency("project-id", initial_outputs)
+# report["drift_score"]: 0.80
+# report["ghost_terms"]: ["schema", "immutable", "not_modify", ...]
+```
+
+### mem0 — `mem0_integration.py`
+
+Detects behavioral noise from hallucinated [mem0](https://github.com/mem0ai/mem0) memory injection. Compares agent behavior with and without memories active; surfaces "noise terms" — terms that appear in memory-augmented output but not in baseline output or actual conversation.
+
+```python
+from mem0_integration import quick_noise_check
+
+report = quick_noise_check(
+    baseline_outputs,   # agent without memories
+    memory_outputs,     # agent with mem0 active
+    conversation_context=actual_turns
+)
+# report["noise_terms"]: ["developer", "google", "formal", "background", ...]
+# These are hallucinated memory categories appearing in behavioral output
+```
+
 ---
 
 ## Decision rule
