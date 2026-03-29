@@ -6,6 +6,7 @@ Or:       python -m pytest tests/ -v  (requires pytest)
 """
 
 import sys
+import subprocess
 from pathlib import Path
 from collections import Counter
 
@@ -246,6 +247,30 @@ def test_combined_drift_demo_surfaces_multiple_signals():
     assert len(result["alerts"]) >= 2
 
 
+def test_quickstart_smoke():
+    repo_root = Path(__file__).parent.parent
+    result = subprocess.run(
+        [sys.executable, str(repo_root / "quickstart.py")],
+        capture_output=True,
+        text=True,
+        cwd=repo_root,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "compression-monitor quickstart" in result.stdout
+
+
+def test_sdk_compaction_demo_polling_smoke():
+    repo_root = Path(__file__).parent.parent
+    result = subprocess.run(
+        [sys.executable, str(repo_root / "examples" / "sdk_compaction_hook_demo.py"), "--polling"],
+        capture_output=True,
+        text=True,
+        cwd=repo_root,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "claude-agent-sdk not installed" in result.stdout or "Starting session with polling-based compaction detection" in result.stdout
+
+
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
@@ -267,6 +292,8 @@ if __name__ == "__main__":
         ("integrations/autogen: drift math", test_autogen_drift_math),
         ("monitor: demo path smoke", test_monitor_demo_path_smoke),
         ("simulate_boundary: combined drift surfaces multiple signals", test_combined_drift_demo_surfaces_multiple_signals),
+        ("quickstart: smoke", test_quickstart_smoke),
+        ("sdk demo: polling smoke", test_sdk_compaction_demo_polling_smoke),
     ]
 
     passed = sum(_run(name, fn) for name, fn in tests)

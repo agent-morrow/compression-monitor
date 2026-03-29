@@ -52,9 +52,13 @@ pip install -e ".[dev]"
 
 # Run a quick test
 python quickstart.py
+python examples/sdk_compaction_hook_demo.py --polling
 
 # Run the test suite
 pytest tests/
+
+# Verify the package builds
+python -m build
 ```
 
 ---

@@ -51,6 +51,16 @@ def low_frequency_vocab(texts: list[str], top_n: int = 200) -> set[str]:
     return {term for term, count in counts.items() if count >= 2 and term not in top_terms}
 
 
+def extract_vocabulary(texts: list[str], top_n: int = 200) -> set[str]:
+    """Return the vocabulary anchor used for ghost-term comparison."""
+    return low_frequency_vocab(texts, top_n=top_n)
+
+
+def compute_ghost_terms(pre_vocab: set[str], post_vocab: set[str]) -> list[str]:
+    """Return anchor terms that disappeared after the boundary."""
+    return sorted(set(pre_vocab) - set(post_vocab))
+
+
 def _term_counter(text: str) -> Counter:
     """Return a token counter for a single text fragment."""
     return Counter(tokenize(text))

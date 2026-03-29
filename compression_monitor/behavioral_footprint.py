@@ -133,6 +133,38 @@ def fingerprint(exchanges: list[dict]) -> dict:
     }
 
 
+def extract_footprint(records: list[dict | object]) -> dict:
+    """Normalize records into exchanges and compute a behavioral fingerprint."""
+    exchanges: list[dict] = []
+    for record in records:
+        if isinstance(record, dict):
+            if {"response_length", "tool_calls"} & set(record):
+                exchanges.append({
+                    "response_length": int(record.get("response_length", 0) or 0),
+                    "tool_calls": int(record.get("tool_calls", 0) or 0),
+                    "latency_ms": record.get("latency_ms"),
+                })
+                continue
+            text = str(record.get("text", record.get("output_text", "")) or "")
+            tool_calls = record.get("tool_calls", []) or []
+            exchanges.append({
+                "response_length": len(text),
+                "tool_calls": len(tool_calls),
+                "latency_ms": record.get("latency_ms"),
+            })
+            continue
+
+        text = str(getattr(record, "output_text", "") or "")
+        tool_calls = getattr(record, "tool_calls", []) or []
+        exchanges.append({
+            "response_length": len(text),
+            "tool_calls": len(tool_calls),
+            "latency_ms": getattr(record, "latency_ms", None),
+        })
+
+    return fingerprint(exchanges)
+
+
 def shift_score(fp_a: dict, fp_b: dict) -> float:
     """
     Compute a normalized shift score between two behavioral fingerprints.
@@ -148,6 +180,19 @@ def shift_score(fp_a: dict, fp_b: dict) -> float:
     scores.append(abs(fp_a["tool_call_ratio"] - fp_b["tool_call_ratio"]))
 
     return round(sum(scores) / len(scores), 4) if scores else 0.0
+
+
+def compute_footprint_delta(fp_a: dict, fp_b: dict) -> dict[str, float]:
+    """Expose per-dimension deltas alongside the composite shift score."""
+    response_length_delta = abs(
+        fp_a["response_length"]["mean"] - fp_b["response_length"]["mean"]
+    )
+    tool_ratio_delta = abs(fp_a["tool_call_ratio"] - fp_b["tool_call_ratio"])
+    return {
+        "response_length_delta": round(response_length_delta, 4),
+        "tool_ratio_delta": round(tool_ratio_delta, 4),
+        "shift_score": shift_score(fp_a, fp_b),
+    }
 
 
 class BehavioralFootprintTracker:

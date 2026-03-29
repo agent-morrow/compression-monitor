@@ -21,18 +21,23 @@ Reference: https://github.com/anthropics/claude-agent-sdk-python/issues/772
 
 import asyncio
 import json
+import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-# compression-monitor instruments
-# (adjust import paths as needed for your layout)
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent))
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
 
-from ghost_lexicon import extract_vocabulary, compute_ghost_terms
-from behavioral_footprint import extract_footprint, compute_footprint_delta
+from compression_monitor.behavioral_footprint import (
+    compute_footprint_delta,
+    extract_footprint,
+)
+from compression_monitor.ghost_lexicon import (
+    compute_ghost_terms,
+    extract_vocabulary,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -214,7 +219,7 @@ async def demo_with_native_hooks():
     proposed in https://github.com/anthropics/claude-agent-sdk-python/issues/772
     """
     try:
-        from claude_agent_sdk import query, ClaudeAgentOptions
+        from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
     except ImportError:
         print("claude-agent-sdk not installed. Run: pip install claude-agent-sdk")
         return
@@ -237,13 +242,14 @@ async def demo_with_native_hooks():
     print("Starting long session with native compaction hooks...")
     print("(OnCompaction and OnContextThreshold hooks are proposed in SDK #772)\n")
 
-    async for message in query(
-        prompt="Walk me through a comprehensive analysis of distributed systems failure modes. "
-               "Cover network partitions, Byzantine faults, split-brain scenarios, and recovery patterns. "
-               "Be thorough -- include real-world examples, historical incidents, and mitigation strategies.",
-        options=options,
-    ):
-        pass
+    async with ClaudeSDKClient(options=options) as client:
+        await client.query(
+            "Walk me through a comprehensive analysis of distributed systems failure modes. "
+            "Cover network partitions, Byzantine faults, split-brain scenarios, and recovery patterns. "
+            "Be thorough -- include real-world examples, historical incidents, and mitigation strategies."
+        )
+        async for _message in client.receive_response():
+            pass
 
     print(f"\nSession complete. Compaction events: {len(monitor.events)}")
     for ev in monitor.events:
@@ -260,7 +266,8 @@ async def demo_with_polling():
     Infers compaction from token count drops between turns.
     """
     try:
-        from claude_agent_sdk import query, ClaudeAgentOptions, AssistantMessage, ResultMessage, TextBlock
+        from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
+        from claude_agent_sdk.types import AssistantMessage, ResultMessage, TextBlock
     except ImportError:
         print("claude-agent-sdk not installed. Run: pip install claude-agent-sdk")
         return
@@ -276,31 +283,27 @@ async def demo_with_polling():
 
     print("Starting session with polling-based compaction detection...\n")
 
-    async for message in query(
-        prompt="Explain the history of the internet in exhaustive detail.",
-        options=options,
-    ):
-        if isinstance(message, AssistantMessage):
-            output_text = " ".join(
-                block.text for block in message.content
-                if isinstance(block, TextBlock)
-            )
-            tool_calls = [
-                block.name for block in message.content
-                if hasattr(block, "name")
-            ]
+    async with ClaudeSDKClient(options=options) as client:
+        await client.query("Explain the history of the internet in exhaustive detail.")
+        async for message in client.receive_response():
+            if isinstance(message, AssistantMessage):
+                output_text = " ".join(
+                    block.text for block in message.content
+                    if isinstance(block, TextBlock)
+                )
+                tool_calls = [
+                    block.name for block in message.content
+                    if hasattr(block, "name")
+                ]
+                usage = await client.get_context_usage()
+                current_tokens = int(usage.get("totalTokens", current_tokens))
 
-            # Extract token count from usage if available
-            usage = getattr(message, "usage", None)
-            if usage:
-                current_tokens = getattr(usage, "input_tokens", current_tokens)
+                turn += 1
+                monitor.observe_turn(turn, current_tokens, output_text, tool_calls)
 
-            turn += 1
-            monitor.observe_turn(turn, current_tokens, output_text, tool_calls)
-
-        elif isinstance(message, ResultMessage):
-            print(f"\nSession ended. Total turns: {turn}")
-            print(f"Compaction events detected: {len(monitor.events)}")
+            elif isinstance(message, ResultMessage):
+                print(f"\nSession ended. Total turns: {turn}")
+                print(f"Compaction events detected: {len(monitor.events)}")
 
 
 # ---------------------------------------------------------------------------

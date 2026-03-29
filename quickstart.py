@@ -23,6 +23,9 @@ import math
 import sys
 from collections import Counter
 
+ALERT_MARKER = "[ALERT]"
+OK_MARKER = "[OK]"
+
 
 # ─── Inline minimal implementations (no import required) ──────────────────────
 
@@ -157,11 +160,11 @@ def main():
     threshold = 0.35
 
     print("Instrument results:")
-    print(f"  Ghost lexicon decay   {ghost:.2f}  {'⚠' if ghost > threshold else '✓'}")
-    print(f"  Tool-call shift       {tool:.2f}  {'⚠' if tool > threshold else '✓'}")
-    print(f"  Semantic drift        {sem:.2f}  {'⚠' if sem > threshold else '✓'}")
-    print(f"  ─────────────────────────")
-    print(f"  Composite score       {composite:.2f}  {'⚠ ALERT' if composite > threshold else '✓ OK'}")
+    print(f"  Ghost lexicon decay   {ghost:.2f}  {ALERT_MARKER if ghost > threshold else OK_MARKER}")
+    print(f"  Tool-call shift       {tool:.2f}  {ALERT_MARKER if tool > threshold else OK_MARKER}")
+    print(f"  Semantic drift        {sem:.2f}  {ALERT_MARKER if sem > threshold else OK_MARKER}")
+    print("  " + "-" * 25)
+    print(f"  Composite score       {composite:.2f}  {'[ALERT] composite drift' if composite > threshold else '[OK] stable'}")
     print()
 
     if composite > threshold:
@@ -184,7 +187,7 @@ def main():
         print("No significant drift detected — behavioral fingerprint stable.")
 
     print()
-    print("─" * 64)
+    print("-" * 64)
     print("To monitor your own Claude Code sessions:")
     print()
     print("  1. Copy .claude-plugin/ from the repo into your project:")

@@ -7,7 +7,7 @@ name = "compression-monitor"
 version = "0.2.1"
 description = "Monitor session-boundary behavioral drift in LLM agents: ghost lexicon decay, behavioral footprint shift, and semantic topic drift."
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 requires-python = ">=3.9"
 keywords = ["llm", "agent", "drift", "memory", "compression", "monitoring"]
 classifiers = [
@@ -20,6 +20,7 @@ dependencies = []
 
 [project.optional-dependencies]
 test = ["pytest>=7.0"]
+dev = ["build>=1.2.1", "pytest>=7.0"]
 crewai = ["crewai>=0.1.0"]
 langgraph = ["langgraph>=0.1.0"]
 autogen = ["pyautogen>=0.2.0"]
