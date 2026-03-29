@@ -238,6 +238,97 @@ report = quick_noise_check(
 # These are hallucinated memory categories appearing in behavioral output
 ```
 
+### Letta — `letta_integration.py`
+
+Behavioral fingerprint monitoring for [Letta](https://github.com/letta-ai/letta) agents at the **in-context → archival eviction boundary**. Letta is the only framework where detection can close into recovery: ghost terms in output are converted into `archival_memory_search` queries, so the agent can retrieve what it doesn't know it's missing.
+
+```python
+from letta_integration import LettaCompressionMonitor
+
+monitor = LettaCompressionMonitor(client)
+monitor.checkpoint(agent_id, pre_eviction_outputs)
+
+# After eviction fires
+report = monitor.check_boundary(agent_id, post_eviction_outputs)
+# report["ghost_terms"]: ["bcrypt", "dependency_injection", "UserRepository"]
+# report["recovery_queries"]: ["search for bcrypt configuration", ...]
+# report["unretrieved_gap"]: True — agent isn't retrieving the lost context
+```
+
+### METR vivaria — `vivaria_integration.py`
+
+Attaches a **Context-Consistency Score (CCS)** to [METR vivaria](https://github.com/METR/vivaria) eval runs. Measures behavioral fingerprint stability across context compaction events within task runs. Surfaces ghost-term decay as a scorable reliability metric alongside existing METR dimensions.
+
+```python
+from vivaria_integration import VivariaCCSMonitor, compute_ccs_for_run
+
+# Offline analysis from run folder
+report = compute_ccs_for_run("runs/my-task-run/")
+# report["ccs"]: 0.72  — behavioral consistency score
+# report["ghost_terms"]: ["verify", "rollback", "constraint"]
+```
+
+### HuggingFace smolagents — `smolagents_integration.py`
+
+Wraps [smolagents](https://github.com/huggingface/smolagents) `MultiStepAgent` to detect behavioral drift at **memory consolidation events**. Baseline fingerprint captured before consolidation; compared after.
+
+```python
+from smolagents_integration import SmolAgentsDriftMonitor
+
+monitor = SmolAgentsDriftMonitor(agent)
+result = agent.run("complex multi-step task...")
+report = monitor.get_consolidation_report()
+# report["drift_detected"]: True / False
+# report["ccs"]: 0.88
+```
+
+### Microsoft Semantic Kernel — `semantic_kernel_integration.py`
+
+Detects behavioral drift after [Semantic Kernel](https://github.com/microsoft/semantic-kernel)'s `ChatHistorySummarizationReducer` fires. Patches `complete_chat_async` to snapshot before and after summarization.
+
+```python
+from semantic_kernel_integration import SemanticKernelDriftMonitor
+
+monitor = SemanticKernelDriftMonitor(kernel)
+await monitor.run_with_monitoring(chat_history, "Task prompt...")
+report = monitor.get_summary_report()
+# report["summarization_events"]: 2
+# report["ghost_terms"]: ["constraint", "production_env"]
+```
+
+### SakanaAI AI-Scientist-v2 — `ai_scientist_integration.py`
+
+Measures behavioral consistency across BFTS phases in [AI-Scientist-v2](https://github.com/SakanaAI/AI-Scientist-v2) long research runs (typically 6h+). CCS can be passed as an input signal to the reviewer model.
+
+```python
+from ai_scientist_integration import AiScientistConsistencyMonitor
+
+monitor = AiScientistConsistencyMonitor()
+monitor.checkpoint_phase("ideation", ideation_outputs)
+monitor.checkpoint_phase("experiment", experiment_outputs)
+report = monitor.phase_comparison("ideation", "experiment")
+# report["ccs"]: 0.65  — high drift across BFTS phases
+```
+
+### Microsoft agent-framework — `agent_framework_integration.py`
+
+Validates behavioral isolation in [microsoft/agent-framework](https://github.com/microsoft/agent-framework) multi-agent meshes. Each agent gets an independent `AgentFrameworkMonitor`; cross-agent drift correlation detects when compaction leaks behavioral changes across isolation boundaries.
+
+```python
+from agent_framework_integration import AgentFrameworkMonitor
+
+monitor = AgentFrameworkMonitor(agent_id="worker-1")
+monitor.update(outputs_before_compaction)
+monitor.update(outputs_after_compaction)
+report = monitor.get_report()
+# report["ccs"]: 0.91
+# report["ghost_terms"]: []
+```
+
+### MCP behavioral checkpoint — `mcp_behavioral_checkpoint.py`
+
+Reference implementation for the proposed [MCP SEP: Session resumption with behavioral checkpoint metadata](https://github.com/modelcontextprotocol/modelcontextprotocol/issues/2492). Implements `sessionId` + `behavioralCheckpoint` in `initialize` requests and `session/drift` notifications on resume.
+
 ---
 
 ## Decision rule
