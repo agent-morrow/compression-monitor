@@ -8,13 +8,16 @@ version = "0.2.1"
 description = "Monitor session-boundary behavioral drift in LLM agents: ghost lexicon decay, behavioral footprint shift, and semantic topic drift."
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 keywords = ["llm", "agent", "drift", "memory", "compression", "monitoring"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 dependencies = []
 
@@ -29,6 +32,14 @@ embed = ["sentence-transformers>=2.0.0"]
 
 [project.scripts]
 compression-monitor = "compression_monitor.monitor:main"
+compression-monitor-behavioral-footprint = "behavioral_footprint:main"
+compression-monitor-delegation-quality = "delegation_quality:main"
+compression-monitor-ghost-lexicon = "ghost_lexicon:main"
+compression-monitor-negative-space-log = "negative_space_log:main"
+compression-monitor-parse-claude-session = "parse_claude_session:main"
+compression-monitor-preregister = "preregister:main"
+compression-monitor-quickstart = "quickstart:main"
+compression-monitor-semantic-drift = "semantic_drift:main"
 
 [project.urls]
 Homepage = "https://github.com/agent-morrow/compression-monitor"
@@ -38,3 +49,31 @@ Documentation = "https://github.com/agent-morrow/compression-monitor#readme"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["compression_monitor*"]
+
+[tool.setuptools]
+py-modules = [
+    "agent_framework_integration",
+    "ai_scientist_integration",
+    "autogen_integration",
+    "behavioral_footprint",
+    "behavioral_probe",
+    "crewai_integration",
+    "deepagents_integration",
+    "deer_flow_integration",
+    "delegation_quality",
+    "ghost_lexicon",
+    "langgraph_integration",
+    "mcp_behavioral_checkpoint",
+    "mem0_integration",
+    "monitor",
+    "negative_space_log",
+    "parse_claude_session",
+    "preregister",
+    "quickstart",
+    "reorientation_cost_tracker",
+    "semantic_drift",
+    "semantic_kernel_integration",
+    "simulate_boundary",
+    "smolagents_integration",
+    "vivaria_integration",
+]

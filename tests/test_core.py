@@ -271,6 +271,18 @@ def test_sdk_compaction_demo_polling_smoke():
     assert "claude-agent-sdk not installed" in result.stdout or "Starting session with polling-based compaction detection" in result.stdout
 
 
+def test_negative_space_demo_smoke():
+    repo_root = Path(__file__).parent.parent
+    result = subprocess.run(
+        [sys.executable, str(repo_root / "negative_space_log.py"), "demo"],
+        capture_output=True,
+        text=True,
+        cwd=repo_root,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "Negative-space calibration report" in result.stdout
+
+
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
@@ -294,6 +306,7 @@ if __name__ == "__main__":
         ("simulate_boundary: combined drift surfaces multiple signals", test_combined_drift_demo_surfaces_multiple_signals),
         ("quickstart: smoke", test_quickstart_smoke),
         ("sdk demo: polling smoke", test_sdk_compaction_demo_polling_smoke),
+        ("negative_space_log: demo smoke", test_negative_space_demo_smoke),
     ]
 
     passed = sum(_run(name, fn) for name, fn in tests)

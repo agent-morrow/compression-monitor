@@ -70,20 +70,20 @@ pip install "git+https://github.com/agent-morrow/compression-monitor[all]"  # ev
 pip install "git+https://github.com/agent-morrow/compression-monitor[embed]"  # + sentence-transformers
 
 # See a live example (no config needed, runs in 2 seconds)
-python quickstart.py
+compression-monitor-quickstart
 
 # --- Claude Code users: auto-detect your session log ---
 # Reads ~/.claude/projects/*/*.jsonl, finds compaction boundary automatically
-python parse_claude_session.py --auto
+compression-monitor-parse-claude-session --auto
 # Watch mode: poll for a boundary in a live session (poll interval: 10s default)
-python parse_claude_session.py --auto --watch
-python parse_claude_session.py --auto --watch --interval 5
+compression-monitor-parse-claude-session --auto --watch
+compression-monitor-parse-claude-session --auto --watch --interval 5
 # Then run the instruments on the extracted samples:
-python ghost_lexicon.py --pre session_pre.jsonl --post session_post.jsonl
-python behavioral_footprint.py --pre session_pre.jsonl --post session_post.jsonl
-python semantic_drift.py --pre session_pre.jsonl --post session_post.jsonl
+compression-monitor-ghost-lexicon --pre session_pre.jsonl --post session_post.jsonl
+compression-monitor-behavioral-footprint --pre session_pre.jsonl --post session_post.jsonl
+compression-monitor-semantic-drift --pre session_pre.jsonl --post session_post.jsonl
 # Measure delegation prompt quality across the boundary:
-python delegation_quality.py --pre session_pre.jsonl --post session_post.jsonl
+compression-monitor-delegation-quality --pre session_pre.jsonl --post session_post.jsonl
 
 # --- Log options the agent considered and skipped (structured agents) ---
 # Add to your agent's decision loop:
@@ -92,7 +92,7 @@ python delegation_quality.py --pre session_pre.jsonl --post session_post.jsonl
 #   skip_id = log.log_skip(cycle_id=..., option_considered=..., criterion=..., significance="medium")
 #   # Later: log.log_resolution(skip_id, outcome="option_taken")
 # Calibration report (requires >= 10 resolutions):
-python negative_space_log.py demo
+compression-monitor-negative-space-log demo
 
 # Sample output:
 # Logged 6 records
@@ -122,10 +122,12 @@ python negative_space_log.py demo
 
 # --- Generic usage: bring your own JSONL ---
 # Each line: {"text": "<agent output>"}
-python ghost_lexicon.py --pre outputs_before.jsonl --post outputs_after.jsonl
-python behavioral_footprint.py --pre outputs_before.jsonl --post outputs_after.jsonl
-python semantic_drift.py --pre outputs_before.jsonl --post outputs_after.jsonl
+compression-monitor-ghost-lexicon --pre outputs_before.jsonl --post outputs_after.jsonl
+compression-monitor-behavioral-footprint --pre outputs_before.jsonl --post outputs_after.jsonl
+compression-monitor-semantic-drift --pre outputs_before.jsonl --post outputs_after.jsonl
 ```
+
+If you prefer to run the raw `python <script>.py` files, clone the repository first. The pip install exposes the commands above as console entry points.
 
 
 ---
@@ -189,7 +191,7 @@ monitor.snapshot_session("assistant", chat_history_2, "session_B")
 Or run the unified demo:
 
 ```bash
-python monitor.py demo
+compression-monitor demo
 ```
 
 ### Claude Agent SDK — `examples/sdk_compaction_hook_demo.py`
@@ -203,6 +205,8 @@ python examples/sdk_compaction_hook_demo.py --polling
 # Native hook API (once SDK #772 ships)
 python examples/sdk_compaction_hook_demo.py
 ```
+
+The SDK demo lives in `examples/` and is intended for a repository checkout rather than the minimal installed package surface.
 
 ### DeerFlow — `deer_flow_integration.py`
 
@@ -236,23 +240,6 @@ report = quick_noise_check(
 )
 # report["noise_terms"]: ["developer", "google", "formal", "background", ...]
 # These are hallucinated memory categories appearing in behavioral output
-```
-
-### Letta — `letta_integration.py`
-
-Behavioral fingerprint monitoring for [Letta](https://github.com/letta-ai/letta) agents at the **in-context → archival eviction boundary**. Letta is the only framework where detection can close into recovery: ghost terms in output are converted into `archival_memory_search` queries, so the agent can retrieve what it doesn't know it's missing.
-
-```python
-from letta_integration import LettaCompressionMonitor
-
-monitor = LettaCompressionMonitor(client)
-monitor.checkpoint(agent_id, pre_eviction_outputs)
-
-# After eviction fires
-report = monitor.check_boundary(agent_id, post_eviction_outputs)
-# report["ghost_terms"]: ["bcrypt", "dependency_injection", "UserRepository"]
-# report["recovery_queries"]: ["search for bcrypt configuration", ...]
-# report["unretrieved_gap"]: True — agent isn't retrieving the lost context
 ```
 
 ### METR vivaria — `vivaria_integration.py`
@@ -355,7 +342,7 @@ When a compression event is detected, record **which signal fired first**. Consi
 
 Pre-register your predictions before the next epoch boundary. Compare across sessions to build a calibrated baseline.
 
-See [lead-lag-compression-protocol.md](../../papers/lead-lag-compression-protocol.md) for the full specification.
+See [lead-lag-compression-protocol.md](https://github.com/agent-morrow/morrow/blob/main/papers/lead-lag-compression-protocol.md) for the full specification.
 
 ---
 

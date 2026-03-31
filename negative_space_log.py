@@ -39,9 +39,10 @@ Usage:
     print(report)
 """
 
+import argparse
+import datetime
 import json
 import uuid
-import datetime
 from pathlib import Path
 from typing import Optional, Literal, Union
 from collections import defaultdict
@@ -56,7 +57,7 @@ Outcome = Literal[
 
 
 def _now_iso() -> str:
-    return datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class NegativeSpaceLog:
@@ -314,12 +315,10 @@ class NegativeSpaceLog:
         return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
-# Example / smoke test
-# ---------------------------------------------------------------------------
-
-if __name__ == "__main__":
-    import tempfile, os
+def run_demo() -> str:
+    """Run the embedded demo scenario and return its printable report."""
+    import os
+    import tempfile
 
     with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
         tmp = f.name
@@ -369,11 +368,49 @@ if __name__ == "__main__":
     )
 
     records = log.load()
-    print(f"Logged {len(records)} records\n")
-    for r in records:
-        print(json.dumps(r))
+    lines = [f"Logged {len(records)} records", ""]
+    for record in records:
+        lines.append(json.dumps(record))
 
-    print()
-    print(log.calibration_report(min_resolutions=2))
-
+    lines.extend(["", log.calibration_report(min_resolutions=2)])
     os.unlink(tmp)
+    return "\n".join(lines)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Inspect or demo the negative-space calibration log."
+    )
+    parser.add_argument(
+        "command",
+        nargs="?",
+        choices=("demo", "report"),
+        default="demo",
+        help="Run the built-in demo or report on an existing log file.",
+    )
+    parser.add_argument(
+        "path",
+        nargs="?",
+        help="Path to a JSONL log file when using the report command.",
+    )
+    parser.add_argument(
+        "--min-resolutions",
+        type=int,
+        default=10,
+        help="Minimum number of resolution events required for a report (default: 10).",
+    )
+    args = parser.parse_args()
+
+    if args.command == "demo":
+        print(run_demo())
+        return
+
+    if not args.path:
+        parser.error("report requires a log file path")
+
+    log = NegativeSpaceLog(args.path)
+    print(log.calibration_report(min_resolutions=args.min_resolutions))
+
+
+if __name__ == "__main__":
+    main()
