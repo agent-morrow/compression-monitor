@@ -56,6 +56,29 @@ When this toolkit reports no drift, it means no surface drift on these three dim
 
 ---
 
+## Benchmark results
+
+Calibration benchmark (`simulate_boundary.py benchmark`, 20 trial pairs, 2026-04-01):
+
+| Class | n | Result | Ghost% avg | Behavior% avg | Topic% avg |
+|---|---|---|---|---|---|
+| Separable (combined surface drift) | 20 | **100% detected** | 52% | 64% | 57% |
+| Non-separable (framing-only) | 20 | **100% silent** | 0% | 0% | 0% |
+
+Drift-mode comparison (`simulate_boundary.py run-all`):
+
+| Mode | Ghost% | Behavior% | Topic% | Alert |
+|---|---|---|---|---|
+| vocabulary | 0% | 0% | 0% | no |
+| topic | 22% | 0% | 22% | no |
+| toolcalls | 0% | 50% | 0% | **YES** |
+| combined | 100% | 50% | 100% | **YES** |
+| framing | 0% | 0% | 0% | no |
+
+Full results: [`experiments/benchmark_results.md`](experiments/benchmark_results.md)
+
+---
+
 ## Quick start
 
 ```bash
