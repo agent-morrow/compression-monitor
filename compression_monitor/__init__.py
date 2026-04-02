@@ -19,7 +19,7 @@ Quick start:
 
 Or use the CLI:
     compression-monitor demo
-    compression-monitor run --log session.jsonl
+    compression-monitor status --session-id demo-1234
 """
 from . import ghost_lexicon, behavioral_footprint, semantic_drift
 from . import integrations

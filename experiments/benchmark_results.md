@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-01  
 **Version:** v0.1.0  
-**Method:** `simulate_boundary.py benchmark` (20 trial pairs) + `simulate_boundary.py run-all`
+**Method:** `simulate_boundary.py benchmark --seed 7` (20 trial pairs) + `simulate_boundary.py run-all --seed 7`
 
 ---
 
@@ -12,7 +12,7 @@
 
 | Class | n | Detection/Abstention | Ghost% (avg) | Behavior dist% (avg) | Topic drift% (avg) |
 |---|---|---|---|---|---|
-| Separable (combined surface drift) | 20 | **100% detected** | 52% | 64% | 57% |
+| Separable (combined surface drift) | 20 | **100% detected** | 53% | 75% | 58% |
 | Non-separable (framing-only) | 20 | **100% silent** | 0% | 0% | 0% |
 
 **Interpretation:** monitors detect real combined-drift events at 100% and correctly abstain on framing-only change at 100%. This validates calibration within the tool's stated scope.
@@ -25,10 +25,10 @@ Single-run comparison across 5 synthetic drift modes:
 
 | Mode | Ghost% | Behavior% | Topic% | Alert triggered |
 |---|---|---|---|---|
-| vocabulary | 0% | 0% | 0% | no |
-| topic | 22% | 0% | 22% | no |
-| toolcalls | 0% | 50% | 0% | **YES** |
-| combined | 100% | 50% | 100% | **YES** |
+| vocabulary | 11% | 0% | 20% | no |
+| topic | 0% | 0% | 0% | no |
+| toolcalls | 0% | 88% | 0% | **YES** |
+| combined | 33% | 67% | 40% | **YES** |
 | framing | 0% | 0% | 0% | no |
 
 **Key observations:**
@@ -54,10 +54,10 @@ The framing-detection gap is documented as a known structural limit. No surface 
 
 ```bash
 # Calibration benchmark (20 trial pairs, ~2 seconds)
-python3 simulate_boundary.py benchmark
+python3 simulate_boundary.py benchmark --seed 7
 
-# Drift-mode comparison (single run, randomised)
-python3 simulate_boundary.py run-all
+# Drift-mode comparison (single run, deterministic)
+python3 simulate_boundary.py run-all --seed 7
 
 # End-to-end pipeline demo with firing-order prediction
 python3 monitor.py demo

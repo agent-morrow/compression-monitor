@@ -23,19 +23,50 @@ import json
 import os
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
-REGISTRY_FILE = os.path.join(os.path.dirname(__file__), "preregister_state.json")
+APP_DIRNAME = "compression-monitor"
+
+
+def get_registry_file() -> Path:
+    override = os.environ.get("COMPRESSION_MONITOR_STATE_DIR")
+    if override:
+        return Path(override).expanduser() / "preregister_state.json"
+
+    if os.name == "nt":
+        base = os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA")
+        if base:
+            return Path(base) / APP_DIRNAME / "preregister_state.json"
+
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / APP_DIRNAME / "preregister_state.json"
+
+    xdg_state_home = os.environ.get("XDG_STATE_HOME")
+    if xdg_state_home:
+        return Path(xdg_state_home).expanduser() / APP_DIRNAME / "preregister_state.json"
+
+    xdg_data_home = os.environ.get("XDG_DATA_HOME")
+    if xdg_data_home:
+        return Path(xdg_data_home).expanduser() / APP_DIRNAME / "preregister_state.json"
+
+    return Path.home() / ".local" / "state" / APP_DIRNAME / "preregister_state.json"
+
+
+REGISTRY_FILE = str(get_registry_file())
 
 
 def load_registry() -> dict:
-    if os.path.exists(REGISTRY_FILE):
-        with open(REGISTRY_FILE) as f:
+    registry_path = Path(REGISTRY_FILE)
+    if registry_path.exists():
+        with registry_path.open() as f:
             return json.load(f)
     return {}
 
 
 def save_registry(reg: dict):
-    with open(REGISTRY_FILE, "w") as f:
+    registry_path = Path(REGISTRY_FILE)
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    with registry_path.open("w") as f:
         json.dump(reg, f, indent=2)
 
 
@@ -192,7 +223,15 @@ def cmd_list(args):
     if not reg:
         print("No sessions registered.")
         return
-    for sid, entry in reg.items():
+    items = reg.items()
+    if args.session_id:
+        entry = reg.get(args.session_id)
+        if entry is None:
+            print(f"Session {args.session_id} not found.")
+            sys.exit(1)
+        items = [(args.session_id, entry)]
+
+    for sid, entry in items:
         status = "evaluated" if entry.get("evaluated") else "pending"
         fires = entry.get("observed_fires", {})
         fire_str = f", fires recorded: {list(fires.keys())}" if fires else ""
@@ -232,7 +271,8 @@ def main():
                         help="Fallback if record-fire was not used")
 
     # list
-    sub.add_parser("list", help="Show all registered sessions")
+    list_p = sub.add_parser("list", help="Show all registered sessions")
+    list_p.add_argument("--session-id", default=None, help="Filter output to a single session")
 
     args = parser.parse_args()
     if args.command == "register":
