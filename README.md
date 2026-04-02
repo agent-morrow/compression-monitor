@@ -58,21 +58,21 @@ When this toolkit reports no drift, it means no surface drift on these three dim
 
 ## Benchmark results
 
-Calibration benchmark (`simulate_boundary.py benchmark`, 20 trial pairs, 2026-04-01):
+Calibration benchmark (`simulate_boundary.py benchmark --seed 7`, 20 trial pairs, 2026-04-01):
 
 | Class | n | Result | Ghost% avg | Behavior% avg | Topic% avg |
 |---|---|---|---|---|---|
-| Separable (combined surface drift) | 20 | **100% detected** | 52% | 64% | 57% |
+| Separable (combined surface drift) | 20 | **100% detected** | 53% | 75% | 58% |
 | Non-separable (framing-only) | 20 | **100% silent** | 0% | 0% | 0% |
 
-Drift-mode comparison (`simulate_boundary.py run-all`):
+Drift-mode comparison (`simulate_boundary.py run-all --seed 7`):
 
 | Mode | Ghost% | Behavior% | Topic% | Alert |
 |---|---|---|---|---|
-| vocabulary | 0% | 0% | 0% | no |
-| topic | 22% | 0% | 22% | no |
-| toolcalls | 0% | 50% | 0% | **YES** |
-| combined | 100% | 50% | 100% | **YES** |
+| vocabulary | 11% | 0% | 20% | no |
+| topic | 0% | 0% | 0% | no |
+| toolcalls | 0% | 88% | 0% | **YES** |
+| combined | 33% | 67% | 40% | **YES** |
 | framing | 0% | 0% | 0% | no |
 
 Full results: [`experiments/benchmark_results.md`](experiments/benchmark_results.md)
@@ -85,12 +85,12 @@ Full results: [`experiments/benchmark_results.md`](experiments/benchmark_results
 # Install core (no heavy dependencies)
 pip install git+https://github.com/agent-morrow/compression-monitor
 
-# With framework integrations
+# Optional extras
 pip install "git+https://github.com/agent-morrow/compression-monitor[crewai]"
 pip install "git+https://github.com/agent-morrow/compression-monitor[langgraph]"
 pip install "git+https://github.com/agent-morrow/compression-monitor[autogen]"
 pip install "git+https://github.com/agent-morrow/compression-monitor[all]"  # everything
-pip install "git+https://github.com/agent-morrow/compression-monitor[embed]"  # + sentence-transformers
+pip install "git+https://github.com/agent-morrow/compression-monitor[embed]"  # semantic-drift + sentence-transformers
 
 # See a live example (no config needed, runs in 2 seconds)
 compression-monitor-quickstart
@@ -104,6 +104,7 @@ compression-monitor-parse-claude-session --auto --watch --interval 5
 # Then run the instruments on the extracted samples:
 compression-monitor-ghost-lexicon --pre session_pre.jsonl --post session_post.jsonl
 compression-monitor-behavioral-footprint --pre session_pre.jsonl --post session_post.jsonl
+# semantic drift uses embeddings; install the [embed] extra first
 compression-monitor-semantic-drift --pre session_pre.jsonl --post session_post.jsonl
 # Measure delegation prompt quality across the boundary:
 compression-monitor-delegation-quality --pre session_pre.jsonl --post session_post.jsonl
@@ -147,6 +148,7 @@ compression-monitor-negative-space-log demo
 # Each line: {"text": "<agent output>"}
 compression-monitor-ghost-lexicon --pre outputs_before.jsonl --post outputs_after.jsonl
 compression-monitor-behavioral-footprint --pre outputs_before.jsonl --post outputs_after.jsonl
+# semantic drift uses embeddings; install the [embed] extra first
 compression-monitor-semantic-drift --pre outputs_before.jsonl --post outputs_after.jsonl
 ```
 

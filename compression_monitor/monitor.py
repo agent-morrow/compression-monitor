@@ -10,7 +10,7 @@ Chains simulate_boundary + preregister in one command:
 
 Usage:
   python3 monitor.py run --session-id SID [--mode vocabulary|topic|toolcalls|combined]
-  python3 monitor.py status --session-id SID
+  python3 monitor.py status [--session-id SID]
   python3 monitor.py demo
 
 The demo command runs a complete example end-to-end with synthetic data,
@@ -158,8 +158,14 @@ def cmd_run(args):
 
 def cmd_status(args):
     """Show current state of a session's predictions and observations."""
-    r = run_script("preregister.py", ["list"])
+    command = ["list"]
+    if args.session_id:
+        command += ["--session-id", args.session_id]
+    r = run_script("preregister.py", command)
     print(r.stdout)
+    if r.returncode != 0:
+        print(r.stderr, file=sys.stderr)
+        sys.exit(r.returncode)
 
 
 def cmd_demo(args):

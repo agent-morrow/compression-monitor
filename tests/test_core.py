@@ -5,8 +5,11 @@ Run with: python tests/test_core.py
 Or:       python -m pytest tests/ -v  (requires pytest)
 """
 
+import importlib
+import io
 import sys
 import subprocess
+from contextlib import redirect_stdout
 from pathlib import Path
 from collections import Counter
 
@@ -225,6 +228,26 @@ def test_monitor_demo_path_smoke(monkeypatch):
     assert scripts.count("preregister.py") >= 2
 
 
+def test_monitor_status_forwards_session_id(monkeypatch):
+    import compression_monitor.monitor as monitor
+
+    class Result:
+        returncode = 0
+        stdout = "ok"
+        stderr = ""
+
+    calls = []
+
+    def fake_run_script(script, args, capture=True):
+        calls.append((script, args, capture))
+        return Result()
+
+    monkeypatch.setattr(monitor, "run_script", fake_run_script)
+    monitor.cmd_status(type("Args", (), {"session_id": "session-123"})())
+
+    assert calls == [("preregister.py", ["list", "--session-id", "session-123"], True)]
+
+
 def test_combined_drift_demo_surfaces_multiple_signals():
     import random
 
@@ -245,6 +268,68 @@ def test_combined_drift_demo_surfaces_multiple_signals():
     assert result["ghost_lexicon"]["ghost_rate"] > 0.3
     assert result["topic_drift"]["topic_drift_score"] > 0.3
     assert len(result["alerts"]) >= 2
+
+
+def test_run_all_seed_is_deterministic():
+    from compression_monitor import simulate_boundary
+
+    args = type("Args", (), {"input": "SAMPLE", "seed": 7})()
+    first = io.StringIO()
+    second = io.StringIO()
+    with redirect_stdout(first):
+        simulate_boundary.cmd_run_all(args)
+    with redirect_stdout(second):
+        simulate_boundary.cmd_run_all(args)
+
+    assert first.getvalue() == second.getvalue()
+
+
+def test_semantic_drift_accepts_pre_post_aliases():
+    from compression_monitor.semantic_drift import resolve_session_paths
+
+    args = type(
+        "Args",
+        (),
+        {"session_a": None, "session_b": None, "pre": "before.jsonl", "post": "after.jsonl"},
+    )()
+
+    assert resolve_session_paths(args) == ("before.jsonl", "after.jsonl")
+
+
+def test_preregister_registry_path_uses_env_dir(monkeypatch, tmp_path):
+    monkeypatch.setenv("COMPRESSION_MONITOR_STATE_DIR", str(tmp_path))
+    import compression_monitor.preregister as preregister
+
+    preregister = importlib.reload(preregister)
+    try:
+        assert Path(preregister.REGISTRY_FILE).parent == tmp_path
+    finally:
+        monkeypatch.delenv("COMPRESSION_MONITOR_STATE_DIR", raising=False)
+        importlib.reload(preregister)
+
+
+def test_preregister_list_filters_by_session(monkeypatch, capsys):
+    import compression_monitor.preregister as preregister
+
+    reg = {
+        "session-a": {
+            "registered_at": "2026-04-02T00:00:00+00:00",
+            "evaluated": False,
+            "observed_fires": {},
+        },
+        "session-b": {
+            "registered_at": "2026-04-02T00:00:00+00:00",
+            "evaluated": True,
+            "observed_fires": {"ghost_lexicon": {"timestamp": "2026-04-02T00:01:00+00:00"}},
+        },
+    }
+    monkeypatch.setattr(preregister, "load_registry", lambda: reg)
+
+    preregister.cmd_list(type("Args", (), {"session_id": "session-b"})())
+    out = capsys.readouterr().out
+
+    assert "session-b" in out
+    assert "session-a" not in out
 
 
 def test_quickstart_smoke():
@@ -303,7 +388,12 @@ if __name__ == "__main__":
         ("integrations/langgraph: drift math", test_langgraph_drift_math),
         ("integrations/autogen: drift math", test_autogen_drift_math),
         ("monitor: demo path smoke", test_monitor_demo_path_smoke),
+        ("monitor: status forwards session filter", test_monitor_status_forwards_session_id),
         ("simulate_boundary: combined drift surfaces multiple signals", test_combined_drift_demo_surfaces_multiple_signals),
+        ("simulate_boundary: seeded run-all is deterministic", test_run_all_seed_is_deterministic),
+        ("semantic_drift: pre/post aliases", test_semantic_drift_accepts_pre_post_aliases),
+        ("preregister: env-scoped registry path", test_preregister_registry_path_uses_env_dir),
+        ("preregister: list filters by session", test_preregister_list_filters_by_session),
         ("quickstart: smoke", test_quickstart_smoke),
         ("sdk demo: polling smoke", test_sdk_compaction_demo_polling_smoke),
         ("negative_space_log: demo smoke", test_negative_space_demo_smoke),

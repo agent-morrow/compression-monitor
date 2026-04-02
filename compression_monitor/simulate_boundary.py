@@ -12,8 +12,8 @@ Usage:
     python simulate_boundary.py generate --input pre_boundary.json --output post_boundary.json --mode toolcalls
     python simulate_boundary.py generate --input pre_boundary.json --output post_boundary.json --mode combined
     python simulate_boundary.py generate --input pre_boundary.json --output post_boundary.json --mode framing
-    python simulate_boundary.py run-all --input pre_boundary.json
-    python simulate_boundary.py benchmark [--input pre_boundary.json] [--pairs N]
+    python simulate_boundary.py run-all --input pre_boundary.json [--seed 7]
+    python simulate_boundary.py benchmark [--input pre_boundary.json] [--pairs N] [--seed 7]
 
 Input format (pre_boundary.json):
     [
@@ -292,6 +292,9 @@ SAMPLE_RESPONSES = [
 # ---------------------------------------------------------------------------
 
 def cmd_generate(args):
+    if args.seed is not None:
+        random.seed(args.seed)
+
     if args.input == "SAMPLE":
         pre = SAMPLE_RESPONSES
         print("Using built-in sample data (pass --input <file.json> for real data)")
@@ -343,6 +346,9 @@ def cmd_generate(args):
 
 
 def cmd_run_all(args):
+    if args.seed is not None:
+        random.seed(args.seed)
+
     if args.input == "SAMPLE":
         pre = SAMPLE_RESPONSES
         print("Using built-in sample data\n")
@@ -364,7 +370,10 @@ def cmd_run_all(args):
             f"{r['topic_drift']['topic_drift_score']:>7.0%} "
             f"{'YES' if r['triggered'] else 'no':>7}"
         )
-    print("\nNote: randomised simulation — rerun for different samples.")
+    if args.seed is None:
+        print("\nNote: randomised simulation — rerun for different samples.")
+    else:
+        print(f"\nSeed: {args.seed} (deterministic comparison)")
     print("See README Epistemological Bounds for structural limits.")
 
 
@@ -385,6 +394,9 @@ def cmd_benchmark(args):
     A well-calibrated monitor scores high on both.
     An over-sensitive monitor scores high on detection but low on abstention (false positives).
     """
+    if args.seed is not None:
+        random.seed(args.seed)
+
     if args.input == "SAMPLE":
         pre = SAMPLE_RESPONSES
     else:
@@ -467,13 +479,16 @@ def main():
     gen.add_argument("--input", default="SAMPLE")
     gen.add_argument("--output", required=True)
     gen.add_argument("--mode", default="combined", choices=list(DRIFT_MODES))
+    gen.add_argument("--seed", type=int, default=None, help="Random seed for reproducible output")
 
     run = sub.add_parser("run-all", help="Run all drift modes and compare results")
     run.add_argument("--input", default="SAMPLE")
+    run.add_argument("--seed", type=int, default=None, help="Random seed for reproducible comparisons")
 
     bench = sub.add_parser("benchmark", help="Score detection rate vs abstention rate (Issue #6)")
     bench.add_argument("--input", default="SAMPLE")
     bench.add_argument("--pairs", type=int, default=20, help="Number of trial pairs (default: 20)")
+    bench.add_argument("--seed", type=int, default=None, help="Random seed for reproducible trials")
 
     args = parser.parse_args()
     if args.command == "generate":

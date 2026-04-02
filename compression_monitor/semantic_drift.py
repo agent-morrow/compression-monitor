@@ -4,8 +4,9 @@ semantic_drift.py — Detect conceptual center-of-gravity shift between agent se
 
 Usage:
     python semantic_drift.py --session-a session_A.jsonl --session-b session_B.jsonl [--sample 20]
+    python semantic_drift.py --pre outputs_before.jsonl --post outputs_after.jsonl [--sample 20]
 
-Requires: sentence-transformers (pip install sentence-transformers)
+Requires: sentence-transformers (pip install "compression-monitor[embed]")
 
 Each JSONL file should contain one JSON object per line with a "text" field.
 The script embeds a random sample from each session, computes the centroid,
@@ -99,22 +100,40 @@ class SemanticDriftTracker:
         return round(len(anchor_terms & recent_terms) / len(union), 4)
 
 
+def resolve_session_paths(args) -> tuple[str, str]:
+    session_a = args.session_a or args.pre
+    session_b = args.session_b or args.post
+    if not session_a or not session_b:
+        raise ValueError("Provide either --session-a/--session-b or the --pre/--post aliases.")
+    return session_a, session_b
+
+
 def main():
     parser = argparse.ArgumentParser(description="Semantic drift detector")
-    parser.add_argument("--session-a", required=True, help="JSONL file for session A")
-    parser.add_argument("--session-b", required=True, help="JSONL file for session B")
+    parser.add_argument("--session-a", help="JSONL file for session A")
+    parser.add_argument("--session-b", help="JSONL file for session B")
+    parser.add_argument("--pre", help="Alias for --session-a")
+    parser.add_argument("--post", help="Alias for --session-b")
     parser.add_argument("--sample", type=int, default=20, help="Max texts to sample per session (default: 20)")
     parser.add_argument("--model", default="all-MiniLM-L6-v2", help="Sentence-transformers model name")
     args = parser.parse_args()
 
     try:
+        session_a, session_b = resolve_session_paths(args)
+    except ValueError as exc:
+        parser.error(str(exc))
+
+    try:
         from sentence_transformers import SentenceTransformer
     except ImportError:
-        print("ERROR: sentence-transformers not installed. Run: pip install sentence-transformers", file=sys.stderr)
+        print(
+            'ERROR: sentence-transformers not installed. Run: pip install "compression-monitor[embed]"',
+            file=sys.stderr,
+        )
         sys.exit(1)
 
-    texts_a = load_texts(args.session_a)
-    texts_b = load_texts(args.session_b)
+    texts_a = load_texts(session_a)
+    texts_b = load_texts(session_b)
 
     if not texts_a or not texts_b:
         print("ERROR: One or both session files are empty or missing 'text' fields.", file=sys.stderr)
