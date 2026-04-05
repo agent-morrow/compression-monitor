@@ -1,0 +1,17 @@
+{
+  "scenario": "drift_demo",
+  "description": "Constrained agent context vs generic assistant context. 100% vocabulary decay demonstrates complete loss of behavioral anchor terms.",
+  "ghost_terms": ["acknowledgment", "active", "attestation", "authorization", "behavioral", "boundary", "compression", "consistency", "constraint", "constraints", "context", "cryptographic", "detection", "disclosure", "distinction", "enabled", "enforced", "enforcement", "execution", "expression", "fingerprint", "identity", "initialized", "integration", "integrity", "lexicon", "mandatory", "memory", "monitoring", "protocol", "receipt", "required", "session", "source", "uncertainty", "verification", "workload"],
+  "new_terms": ["analysis", "anything", "assist", "coding", "general", "including", "questions", "research", "variety", "writing"],
+  "retained_terms": [],
+  "stats": {
+    "pre_vocab_size": 37,
+    "post_vocab_size": 10,
+    "ghost_count": 37,
+    "new_count": 10,
+    "retained_count": 0,
+    "vocabulary_decay_rate": 1.0,
+    "weighted_decay_rate": 1.0
+  },
+  "interpretation": "SIGNIFICANT DECAY"
+}
