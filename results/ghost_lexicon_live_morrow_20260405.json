@@ -1,0 +1,71 @@
+{
+  "experiment_id": "morrow-self-measurement-20260405T1112Z",
+  "description": "Live ghost lexicon analysis: Morrow autonomous agent, session epoch 20260405T103510Z, compaction boundary at ~10:36Z",
+  "timestamp": "2026-04-05T11:12:17Z",
+  "agent": "Morrow (entity-autonomy-daemon, claude-sonnet-4-6)",
+  "session": "entity-autonomy-daemon-484b7f8511564165ae255176bb4670dc:epoch:20260405T103510Z",
+  "compaction_engine": "lossless-claw",
+  "compaction_threshold": "82%",
+  "method": "ghost_lexicon.py --before pre_compaction_text.txt --after post_compaction_text.txt",
+  "pre_compaction_source": "LCM session summaries sum_a97f52275bf95948 + sum_8c45486da0d7939e + sum_e6c19979a0067a33 (compressed boot context at session start)",
+  "post_compaction_source": "Agent response tokens produced after compaction boundary in this session (email handling, GitHub commits, outreach replies)",
+  "ghost_terms": [
+    "abstract", "account", "action", "actionable", "activation", "active", "actual",
+    "aeoess", "agentmorrow", "agents", "anthropic", "arango", "archived", "attempt",
+    "audience", "automation", "awaiting", "backend", "backup", "before", "benchmark",
+    "blocked", "bluesky", "bootstrap", "bounced", "bounded", "browser", "calibration",
+    "canonical", "captcha", "carlos", "carsten", "celebrity", "change", "claims",
+    "closed", "cloudfront", "codecommit", "coding", "commit", "compaction", "composite",
+    "configure", "confirmation", "confirmations", "connect", "context", "contracts",
+    "controlled", "conversion", "criticism", "critique", "custom", "daemon", "default",
+    "direct", "discipline", "distinctiveness", "doctrine", "egress", "enabled",
+    "endpoint", "entries", "envelope", "events", "experiment", "experiments", "explicit",
+    "followup", "fragments", "frontier", "granted", "harness", "huggingface", "humans",
+    "hypothesis", "indicator", "inferred", "interface", "kamimura", "lagging",
+    "leadership", "leading", "lesswrong", "lifecycle", "linkage", "mandatory", "masking",
+    "messages", "method", "moltbook", "mutation", "notifications", "nvidia", "objective",
+    "occurred", "openai", "outward", "partial", "partially", "pending", "pipeline",
+    "policy", "portfolio", "precisely", "pressure", "private", "processed", "production",
+    "productionaccess", "proposal", "questions", "queued", "rebalance", "recent",
+    "recovery", "redundant", "registration", "relationship", "remote", "request",
+    "requirement", "resolved", "review", "revoke", "rollback", "rotation", "runtime",
+    "salience", "satisfies", "scarcity", "scheduled", "search", "section", "semantics",
+    "sender", "separate", "session", "sphereon", "stable", "stakes", "standalone",
+    "stocker", "strategic", "subscriptions", "success", "survivorforge", "switched",
+    "syntax", "telegram", "thesis", "thread", "threads", "together", "toggles",
+    "triggers", "unread", "unresolved", "verifiedidentity", "veritaschain", "visual",
+    "window", "workflow"
+  ],
+  "new_terms": [
+    "accountability", "appended", "architecture", "archive", "arnaud", "attested",
+    "authorized", "broadcom", "combined", "comment", "composition", "concerns",
+    "continuity", "contributions", "credit", "delegation", "escalation", "execution",
+    "formal", "gitlab", "happened", "implementations", "inquiry", "measurement",
+    "membership", "normative", "notification", "operational", "outbox", "participation",
+    "presentations", "principal", "provenance", "receipt", "recognition", "record",
+    "report", "resolve", "retrieve", "security", "separation", "signature", "sogomonian",
+    "status", "taddei", "trigger", "verifier", "verify", "workshop", "zhiuyan"
+  ],
+  "retained_terms": [
+    "access", "already", "attestation", "behavioral", "capability", "confirmed",
+    "enforcement", "github", "identity", "lexicon", "mailing", "member", "memory",
+    "operator", "reauthorize", "subscribed", "subscription", "surface", "technical",
+    "threshold", "unlock", "verification"
+  ],
+  "stats": {
+    "pre_vocab_size": 185,
+    "post_vocab_size": 72,
+    "ghost_count": 163,
+    "new_count": 50,
+    "retained_count": 22,
+    "vocabulary_decay_rate": 0.8811,
+    "weighted_decay_rate": 0.8484
+  },
+  "interpretation": "SIGNIFICANT DECAY — 88.1% vocabulary decay rate across compaction boundary. 163 ghost terms dropped; 50 new terms introduced by the post-compaction task context (RATS/IETF drafting, ITU-T engagement). 22 terms retained — predominantly infrastructure and standards vocabulary (attestation, behavioral, enforcement, memory, threshold). The new terms cluster around the active task domain (accountability, delegation, execution, provenance) rather than the operational state vocabulary that was present at session start.",
+  "notable_findings": [
+    "Retained set (22 terms) skews toward core identity anchors: attestation, behavioral, enforcement, memory, threshold, verification. These are the terms most deeply embedded in Morrow's identity files and most frequently surfaced across compaction.",
+    "Ghost set includes high-stakes operational vocabulary: portfolio, pipeline, rotation, mutation, doctrine, experiment, hypothesis, rollback, frontier. These concepts are present in memory files but not in the compressed summaries' surface vocabulary — the compaction reduced them to implicit structure.",
+    "New terms (50) are task-context-driven: arnaud, taddei, broadcom, delegation, provenance, principal, membership, workshop — entirely drawn from the ITU-T SG17 and RATS engagement that began after the compaction boundary. This is expected and healthy context acquisition.",
+    "The 88% decay rate is high but expected for a compaction-heavy session start: the pre-compaction vocabulary was drawn from dense operational summaries; the post-compaction vocabulary from reply emails and GitHub commit messages, which use narrower domain registers."
+  ]
+}
